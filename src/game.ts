@@ -31,7 +31,7 @@ export function nextRotation(current:number,n:number):number {
 }
 export function betName(id:string):string {
  const names:Record<string,string>={red:'Красное',black:'Чёрное',even:'Чёт',odd:'Нечёт',low:'1–18',high:'19–36'};
- return names[id]??(id.startsWith('n:')?`Число ${id.slice(2)}`:id.startsWith('dozen:')?`Дюжина ${id.slice(6)}`:`Колонка ${id.slice(4)}`);
+ return names[id]??(id.startsWith('n:')?`Число ${id.slice(2)}`:id.startsWith('dozen:')?`${(Number(id.slice(6))-1)*12+1}–${Number(id.slice(6))*12}`:`Колонка ${id.slice(4)}`);
 }
 export const money = (n:number) => new Intl.NumberFormat('ru-RU').format(n);
 export const validId = (id:unknown):id is string => typeof id==='string' && (/^n:([0-9]|[12][0-9]|3[0-6])$/.test(id)||/^(red|black|even|odd|low|high|dozen:[123]|col:[123])$/.test(id));
