@@ -1,11 +1,11 @@
 import { motion } from 'framer-motion';
-import { WHEEL, color } from '../game';
+import { WHEEL, color, type Pocket } from '../game';
 const point = (r:number,a:number) => [250+r*Math.sin(a*Math.PI/180),250-r*Math.cos(a*Math.PI/180)];
 const sector = (outer:number,inner:number,a:number,b:number) => `M${point(outer,a)} A${outer} ${outer} 0 0 1 ${point(outer,b)} L${point(inner,b)} A${inner} ${inner} 0 0 0 ${point(inner,a)} Z`;
-export function Wheel({rotation,spinning,onComplete,result}:{rotation:number;spinning:boolean;onComplete:()=>void;result:number|null}) {
- const step = 360/37;
+export function Wheel({rotation,spinning,onComplete,result}:{rotation:number;spinning:boolean;onComplete:()=>void;result:Pocket|null}) {
+ const step = 360/WHEEL.length;
  return <div className="wheel-wrap"><div className="wheel-shadow"/><div className="wheel-frame"><div className="wheel-pointer"/>
- <svg className="wheel" viewBox="0 0 500 500" role="img" aria-label="Колесо европейской рулетки">
+ <svg className="wheel" viewBox="0 0 500 500" role="img" aria-label="Колесо американской рулетки">
  <defs>
   <radialGradient id="wood"><stop stopColor="#30170e"/><stop offset=".83" stopColor="#311a12"/><stop offset=".88" stopColor="#8b5231"/><stop offset=".92" stopColor="#4b2819"/><stop offset=".97" stopColor="#8c5735"/><stop offset="1" stopColor="#25170f"/></radialGradient>
   <linearGradient id="brass" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#634520"/><stop offset=".22" stopColor="#f5dea1"/><stop offset=".45" stopColor="#b88c48"/><stop offset=".55" stopColor="#725027"/><stop offset=".8" stopColor="#dcb777"/><stop offset="1" stopColor="#f4d59a"/></linearGradient>
@@ -42,6 +42,6 @@ export function Wheel({rotation,spinning,onComplete,result}:{rotation:number;spi
  <path d="M52 124 A235 235 0 0 1 370 49" fill="none" stroke="#ffe3ab" strokeWidth="2" opacity=".3"/>
  </svg>
  <motion.div className="ball-orbit" animate={{rotate:-Math.ceil(rotation/360)*360}} transition={{duration:5.4,ease:[.15,.6,.2,1]}}><span className="ball"/></motion.div></div>
- <div className="wheel-caption"><span className="tiny-line"/> ЕВРОПЕЙСКАЯ РУЛЕТКА <span className="tiny-line"/></div>
- <div className="wheel-result" aria-live="polite">{spinning?'Ставки приняты. Удачи!':result===null?'Сделайте вашу ставку':<>Выпало <strong className={color(result)}>{result}</strong> · {color(result)==='red'?'красное':color(result)==='black'?'чёрное':'зеро'}</>}</div></div>;
+ <div className="wheel-caption"><span className="tiny-line"/> АМЕРИКАНСКАЯ РУЛЕТКА <span className="tiny-line"/></div>
+ <div className="wheel-result" aria-live="polite">{spinning?'Ставки приняты. Удачи!':result===null?'Сделайте вашу ставку':<>Выпало <strong className={color(result)}>{result}</strong> · {color(result)==='red'?'красное':color(result)==='black'?'чёрное':result==='00'?'двойное зеро':'зеро'}</>}</div></div>;
 }
