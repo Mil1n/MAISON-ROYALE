@@ -1,0 +1,889 @@
+.blackjack {
+  --bj-gold: #d9bc81;
+  --bj-border: #c8ac7038;
+  min-width: 0;
+  width: 100%;
+}
+
+.blackjack .bj-table {
+  position: relative;
+  overflow: hidden;
+  border: 8px solid #342418;
+  border-radius: 25px;
+  background: #123d2b;
+  box-shadow: 0 0 0 1px #9c78504f, 0 2px 0 1px #d5ae675c, inset 0 0 0 2px #b6985a8c, 0 22px 55px #0005;
+}
+
+.blackjack .bj-table::before {
+  position: absolute;
+  inset: 7px;
+  z-index: 2;
+  border: 1px dashed #d2bd8657;
+  border-radius: 13px;
+  content: '';
+  pointer-events: none;
+}
+
+.blackjack .bj-table__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  min-height: 52px;
+  padding: 12px 27px;
+  border-bottom: 1px solid #c4b17a25;
+  color: #b8bc95;
+  font-size: 8px;
+  letter-spacing: 1.4px;
+}
+
+.blackjack .bj-table__top > span:first-child {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.blackjack .bj-table__top b {
+  padding: 0 3px;
+  font-weight: 400;
+  opacity: .6;
+}
+
+.blackjack .bj-table__top i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #adc38d;
+  box-shadow: 0 0 8px #adc38d50;
+}
+
+.blackjack .bj-felt {
+  position: relative;
+  padding: 24px 25px 26px;
+  background: radial-gradient(ellipse at 50% 35%, #47755026, transparent 76%), repeating-linear-gradient(30deg, #ffffff03 0 .7px, transparent .7px 2.5px), repeating-linear-gradient(120deg, #00000008 0 .8px, transparent .8px 3px), #154632;
+  box-shadow: inset 0 0 100px #061c10a3;
+}
+
+.blackjack .bj-felt__watermark {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #e6d0a008;
+  font-size: clamp(170px, 25vw, 310px);
+  font-weight: 700;
+  letter-spacing: -20px;
+  pointer-events: none;
+  user-select: none;
+}
+
+.blackjack .bj-seat {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+  text-align: center;
+}
+
+.blackjack .bj-seat__heading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 11px;
+  margin-bottom: 16px;
+}
+
+.blackjack .bj-seat__heading h3 {
+  margin: 0;
+  color: #e0ddc7;
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 1.1px;
+}
+
+.blackjack .bj-score {
+  display: inline-grid;
+  place-items: center;
+  grid-auto-flow: column;
+  min-width: 34px;
+  min-height: 28px;
+  padding: 4px 9px;
+  border: 1px solid #c5af744d;
+  border-radius: 5px;
+  color: #f0dfb6;
+  background: #071e18a6;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.blackjack .bj-score small {
+  color: #b3b99c;
+  font-size: 10px;
+  font-weight: 400;
+  white-space: pre;
+}
+
+.blackjack .bj-score--bust {
+  border-color: #e0a18d85;
+  color: #f0aa97;
+}
+
+.blackjack .bj-cards {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  max-width: 920px;
+  min-height: 148px;
+  margin: 0 auto;
+  padding: 0 0 6px;
+  perspective: 900px;
+}
+
+.blackjack .bj-card,
+.blackjack .bj-card-slot {
+  position: relative;
+  flex: 0 0 103px;
+  width: 103px;
+  height: 144px;
+  border: 1px solid #fff9e3;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #fffdf4, #f4efdf 70%, #e4dbc5);
+  box-shadow: inset 0 0 0 3px #ffffff50, 0 2px 0 #c6c0aa, 1px 6px 8px #0006;
+  color: #182a23;
+  user-select: none;
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+}
+
+.blackjack .bj-card--red {
+  color: #ae2d38;
+}
+
+.blackjack .bj-card__corner {
+  position: absolute;
+  top: 7px;
+  left: 7px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  width: 18px;
+  line-height: 1.05;
+}
+
+.blackjack .bj-card__corner b {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -1px;
+}
+
+.blackjack .bj-card__corner i {
+  font-family: Georgia, serif;
+  font-size: 19px;
+  font-style: normal;
+  line-height: 1.1;
+}
+
+.blackjack .bj-card__corner--bottom {
+  inset: auto 7px 7px auto;
+  transform: rotate(180deg);
+}
+
+.blackjack .bj-card__pips {
+  position: absolute;
+  inset: 15px 23px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(5, 1fr);
+  align-items: center;
+  justify-items: center;
+}
+
+.blackjack .bj-card__pips i {
+  font-family: Georgia, serif;
+  font-size: 23px;
+  font-style: normal;
+  line-height: .85;
+}
+
+.blackjack .bj-card__portrait {
+  position: absolute;
+  inset: 23px 25px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  border: 1px solid currentColor;
+  background: linear-gradient(150deg, #ad88491a, #ffffff50);
+}
+
+.blackjack .bj-card__portrait > svg {
+  width: 26px;
+  height: 24px;
+  color: #a98b4c;
+  stroke-width: 1.3;
+}
+
+.blackjack .bj-card__portrait b {
+  font-size: 30px;
+  line-height: 1;
+}
+
+.blackjack .bj-card__portrait i {
+  font-family: Georgia, serif;
+  font-size: 24px;
+  font-style: normal;
+  line-height: 1;
+}
+
+.blackjack .bj-card__portrait--ace {
+  inset: 25px 20px;
+  border: 0;
+  background: none;
+  font-family: Georgia, serif;
+  font-size: 58px;
+}
+
+.blackjack .bj-card--back {
+  padding: 6px;
+  background: #e9dfc4;
+  border-color: #e5d8b7;
+}
+
+.blackjack .bj-card__back-frame {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 100%;
+  overflow: hidden;
+  border: 1px solid #c2a86c;
+  border-radius: 3px;
+  background: repeating-linear-gradient(45deg, #d6bf7e12 0 1px, transparent 1px 8px), repeating-linear-gradient(-45deg, #d6bf7e12 0 1px, transparent 1px 8px), radial-gradient(ellipse, #193e31, #10291f);
+  color: #dac08a;
+  box-shadow: inset 0 0 0 3px #0e281f, inset 0 0 0 4px #c6a66566;
+}
+
+.blackjack .bj-card__back-frame svg {
+  width: 25px;
+  height: 22px;
+  stroke-width: 1.25;
+}
+
+.blackjack .bj-card__back-frame > span {
+  font-family: Georgia, serif;
+  font-size: 22px;
+  letter-spacing: 1px;
+}
+
+.blackjack .bj-card__back-frame > i {
+  font-size: 4px;
+  font-style: normal;
+  letter-spacing: 1px;
+}
+
+.blackjack .bj-card-slot {
+  display: grid;
+  place-items: center;
+  background: #0e352751;
+  border: 1px dashed #bba47345;
+  box-shadow: inset 0 0 0 3px #193e2c3d;
+  color: #bca57719;
+  font-family: Georgia, serif;
+  font-size: 44px;
+}
+
+.blackjack .bj-seat__note {
+  min-height: 18px;
+  margin: 13px 0 0;
+  color: #a4b89a;
+  font-size: 10px;
+  line-height: 1.6;
+}
+
+.blackjack .bj-table__inscription {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 15px;
+  width: 70%;
+  margin: 21px auto 20px;
+  padding-top: 19px;
+  border-top: 1px solid #d4b7763b;
+  border-radius: 50% 50% 0 0;
+  color: #d3bc8580;
+  font-size: 10px;
+  letter-spacing: 3px;
+  white-space: nowrap;
+}
+
+.blackjack .bj-table__inscription span {
+  width: 35px;
+  height: 1px;
+  background: #d3bc8530;
+}
+
+.blackjack .bj-outcome {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  align-items: center;
+  min-width: 0;
+  max-width: 760px;
+  margin: 22px auto 0;
+  padding: 17px;
+  border: 1px solid #c2a66d4d;
+  border-radius: 8px;
+  background: #08281ca1;
+  text-align: center;
+}
+
+.blackjack .bj-outcome__label {
+  color: #e7d3a6;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.blackjack .bj-outcome > strong {
+  min-width: 0;
+  max-width: 100%;
+  color: #e8dec5;
+  font-size: clamp(18px, 2.5vw, 26px);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.blackjack .bj-outcome > strong small {
+  color: #a4b198;
+  font-size: 10px;
+  font-weight: 400;
+}
+
+.blackjack .bj-outcome__return {
+  min-width: 0;
+  max-width: 100%;
+  color: #a9b99e;
+  font-size: 10px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.blackjack .bj-outcome__return b {
+  font-weight: 400;
+}
+
+.blackjack .bj-outcome--blackjack {
+  border-color: #d4b77599;
+  background: radial-gradient(ellipse at 50% 0, #d4b77516, transparent 100%), #08281cbf;
+}
+
+.blackjack .bj-active-stake {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: 7px;
+  min-width: 0;
+  margin-top: 22px;
+  color: #aabb9e;
+  font-size: 10px;
+}
+
+.blackjack .bj-active-stake svg {
+  align-self: center;
+  color: var(--bj-gold);
+  flex-shrink: 0;
+}
+
+.blackjack .bj-active-stake strong {
+  min-width: 0;
+  max-width: 100%;
+  color: #e8d19c;
+  font-size: 17px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.blackjack .bj-controls {
+  position: relative;
+  border-top: 1px solid #cfb47838;
+  background: linear-gradient(#092f237f, #061f17bf);
+  padding: 24px 30px;
+}
+
+.blackjack .bj-stake-form {
+  display: flex;
+  align-items: flex-end;
+  gap: 30px;
+}
+
+.blackjack .bj-stake-picker {
+  flex: 1;
+  min-width: 0;
+  max-width: 660px;
+}
+
+.blackjack .bj-stake-picker > label {
+  display: block;
+  margin-bottom: 15px;
+  color: #b1be9f;
+  font-size: 8px;
+  letter-spacing: 1.4px;
+}
+
+.blackjack .bj-presets {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 17px;
+  margin-bottom: 20px;
+  padding: 5px;
+}
+
+.blackjack .bj-chip {
+  --bj-chip: #3a7d91;
+  display: grid;
+  place-items: center;
+  flex: 0 0 46px;
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: repeating-conic-gradient(from 6deg, #ede6d4 0 13deg, transparent 13deg 60deg), radial-gradient(circle at 35% 25%, color-mix(in srgb, var(--bj-chip), white 15%), var(--bj-chip) 65%, color-mix(in srgb, var(--bj-chip), black 25%));
+  box-shadow: inset 0 0 0 1px #ffffff4d, inset 0 0 0 4px #00000012, 0 3px 0 color-mix(in srgb, var(--bj-chip), black 45%), 0 5px 0 color-mix(in srgb, var(--bj-chip), black 50%), 0 8px 9px #0008;
+  outline: 1px solid #0005;
+  outline-offset: 0;
+}
+
+.blackjack .bj-chip > span {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid #f6edd5b3;
+  border-radius: 50%;
+  background: var(--bj-chip);
+  color: #fff5df;
+  font-size: 9px;
+  font-weight: 700;
+  box-shadow: 0 0 0 2px var(--bj-chip), inset 0 1px 2px #0003;
+  text-shadow: 0 1px 2px #0005;
+}
+
+.blackjack .bj-chip--1 { --bj-chip: #67518a; }
+.blackjack .bj-chip--2 { --bj-chip: #282e2b; }
+.blackjack .bj-chip--3 { --bj-chip: #a08747; }
+.blackjack .bj-chip--4 { --bj-chip: #286d63; }
+
+.blackjack .bj-chip.is-selected {
+  outline: 2px solid #e2c486;
+  outline-offset: 5px;
+  transform: translateY(-3px);
+}
+
+.blackjack .bj-chip:hover:not(:disabled) {
+  transform: translateY(-3px);
+}
+
+.blackjack .bj-custom-stake {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+  padding: 10px 11px 10px 14px;
+  border: 1px solid #ba9f6566;
+  border-radius: 6px;
+  background: #051f16aa;
+}
+
+.blackjack .bj-custom-stake:focus-within {
+  border-color: #dfc486;
+}
+
+.blackjack .bj-custom-stake.has-error {
+  border-color: #df9e8b;
+}
+
+.blackjack .bj-custom-stake input {
+  flex: 1 1 0;
+  min-width: 0;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: #f0e3c3;
+  font-size: 19px;
+  font-weight: 700;
+  font-family: inherit;
+  outline: 0;
+}
+
+.blackjack .bj-custom-stake > span {
+  flex-shrink: 0;
+  color: #a1b092;
+  font-size: 10px;
+}
+
+.blackjack .bj-custom-stake > button {
+  flex-shrink: 0;
+  padding: 7px 11px;
+  border: 1px solid #c0a76d66;
+  border-radius: 4px;
+  background: #c9ae7712;
+  color: #e0c98f;
+  font-size: 10px;
+}
+
+.blackjack .bj-stake-hint,
+.blackjack .bj-error,
+.blackjack .bj-double-note {
+  margin: 10px 0 0;
+  color: #9fb394;
+  font-size: 9px;
+  line-height: 1.65;
+}
+
+.blackjack .bj-error {
+  color: #f0b29e;
+  font-size: 11px;
+}
+
+.blackjack .bj-deal,
+.blackjack .bj-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 47px;
+  padding: 12px 19px;
+  border: 1px solid #c2a66c80;
+  border-radius: 5px;
+  background: #143c2b;
+  color: #ead9b5;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.blackjack .bj-deal {
+  flex: 0 0 220px;
+  min-height: 55px;
+  margin-left: auto;
+  margin-bottom: 25px;
+}
+
+.blackjack .bj-deal > span {
+  margin-left: 12px;
+  font-size: 19px;
+  font-weight: 400;
+}
+
+.blackjack .bj-deal,
+.blackjack .bj-action--gold {
+  border-color: #e1c287;
+  background: linear-gradient(165deg, #e7cc95, #c09e61 60%, #ae8747);
+  box-shadow: inset 0 1px #fff4ce80, 0 3px 0 #70552d, 0 6px 12px #0003;
+  color: #233221;
+}
+
+.blackjack .bj-action:hover:not(:disabled) {
+  background: #214b35;
+}
+
+.blackjack .bj-action--gold:hover:not(:disabled),
+.blackjack .bj-deal:hover:not(:disabled) {
+  background: linear-gradient(165deg, #f0d5a0, #d1af70 60%, #b99351);
+}
+
+.blackjack .bj-actions-panel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 20px;
+}
+
+.blackjack .bj-actions-note {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  color: #d6c08b;
+}
+
+.blackjack .bj-actions-note > span {
+  color: #e4dbc0;
+  font-size: 13px;
+}
+
+.blackjack .bj-actions-note small {
+  display: block;
+  color: #9aaf90;
+  margin-top: 6px;
+  font-size: 10px;
+}
+
+.blackjack .bj-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-left: auto;
+}
+
+.blackjack .bj-double-note {
+  flex-basis: 100%;
+  margin-top: -3px;
+}
+
+.blackjack .bj-session,
+.blackjack .bj-history {
+  margin-top: 24px;
+  padding: 23px 25px;
+  border: 1px solid var(--bj-border);
+  border-radius: 8px;
+  background: #0a251e66;
+}
+
+.blackjack .bj-section-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #bba775;
+}
+
+.blackjack .bj-section-heading h3 {
+  margin: 0;
+  color: #e4deca;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.blackjack .bj-session__stats {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.5fr);
+  gap: 20px;
+  margin-top: 22px;
+}
+
+.blackjack .bj-session__stats > div {
+  min-width: 0;
+}
+
+.blackjack .bj-session__stats > div + div {
+  padding-left: 24px;
+  border-left: 1px solid #b4a47424;
+}
+
+.blackjack .bj-session__stats span {
+  display: block;
+  color: #9dad94;
+  font-size: 10px;
+}
+
+.blackjack .bj-session__stats strong {
+  display: block;
+  min-width: 0;
+  margin-top: 9px;
+  color: #e6dfca;
+  font-size: 25px;
+  line-height: 1.45;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.blackjack .bj-session__stats strong small {
+  color: #9dad94;
+  font-size: 10px;
+  font-weight: 400;
+}
+
+.blackjack .bj-positive { color: #b2d4a2 !important; }
+.blackjack .bj-negative { color: #eda48f !important; }
+
+.blackjack .bj-history {
+  padding: 0;
+  overflow: hidden;
+}
+
+.blackjack .bj-history summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 20px 25px;
+  color: #c7b98e;
+  cursor: pointer;
+  font-size: 13px;
+  list-style: none;
+}
+
+.blackjack .bj-history summary::-webkit-details-marker { display: none; }
+
+.blackjack .bj-history summary > span {
+  color: #e4ddc7;
+}
+
+.blackjack .bj-history summary > small {
+  margin-left: auto;
+  color: #8fa58a;
+  font-size: 10px;
+}
+
+.blackjack .bj-history summary > svg:last-child {
+  flex-shrink: 0;
+  transition: transform .2s;
+}
+
+.blackjack .bj-history[open] summary > svg:last-child { transform: rotate(180deg); }
+
+.blackjack .bj-history__scroll {
+  overflow-x: auto;
+  max-height: 470px;
+  padding: 0 15px 8px;
+}
+
+.blackjack .bj-history table {
+  table-layout: fixed;
+  width: 100%;
+  min-width: 580px;
+  border-collapse: collapse;
+  font-size: 11px;
+  text-align: left;
+  white-space: normal;
+}
+
+.blackjack .bj-history th,
+.blackjack .bj-history td {
+  padding: 13px 10px;
+  border-bottom: 1px solid #baa26729;
+  color: #b9c7ad;
+  line-height: 1.6;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.blackjack .bj-history th {
+  color: #b4bb9b;
+  background: #103325;
+  font-size: 10px;
+}
+
+.blackjack .bj-history td small {
+  display: block;
+  margin-top: 4px;
+  color: #8ca582;
+  font-size: 9px;
+}
+
+.blackjack .bj-history__empty {
+  padding: 0 25px 22px;
+  color: #92a98b;
+  font-size: 11px;
+}
+
+.blackjack .bj-local-note {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 18px 0 30px;
+  color: #819b81;
+  font-size: 9px;
+  line-height: 1.6;
+}
+
+.blackjack .bj-local-note svg { flex-shrink: 0; }
+
+@media (max-width: 960px) {
+  .blackjack .bj-table__top { font-size: 7px; padding-left: 22px; padding-right: 22px; }
+  .blackjack .bj-stake-form { gap: 22px; }
+  .blackjack .bj-deal { flex-basis: 190px; }
+  .blackjack .bj-presets { gap: 14px; }
+  .blackjack .bj-chip { flex-basis: 43px; width: 43px; height: 43px; }
+  .blackjack .bj-chip > span { width: 28px; height: 28px; font-size: 8px; }
+}
+
+@media (max-width: 650px) {
+  .blackjack .bj-table { border-width: 6px; }
+  .blackjack .bj-table__top { font-size: 7px; letter-spacing: .8px; padding: 13px 20px; }
+  .blackjack .bj-table__top > span:last-child { display: none; }
+  .blackjack .bj-felt { padding: 24px 18px; }
+  .blackjack .bj-cards { gap: 9px; min-height: 130px; }
+  .blackjack .bj-card, .blackjack .bj-card-slot { flex-basis: 86px; width: 86px; height: 124px; border-radius: 6px; }
+  .blackjack .bj-card__corner { left: 5px; top: 5px; width: 15px; }
+  .blackjack .bj-card__corner b { font-size: 16px; }
+  .blackjack .bj-card__corner i { font-size: 17px; }
+  .blackjack .bj-card__corner--bottom { inset: auto 5px 5px auto; }
+  .blackjack .bj-card__pips { inset: 13px 20px; }
+  .blackjack .bj-card__pips i { font-size: 20px; }
+  .blackjack .bj-card__portrait { inset: 21px 21px; }
+  .blackjack .bj-card__portrait b { font-size: 25px; }
+  .blackjack .bj-card__portrait i { font-size: 20px; }
+  .blackjack .bj-card__portrait > svg { width: 22px; height: 20px; }
+  .blackjack .bj-card__portrait--ace { inset: 20px 17px; font-size: 48px; }
+  .blackjack .bj-table__inscription { width: 90%; font-size: 8px; letter-spacing: 2px; margin-top: 19px; }
+  .blackjack .bj-table__inscription span { width: 22px; }
+  .blackjack .bj-controls { padding: 23px 20px; }
+  .blackjack .bj-stake-form { display: block; }
+  .blackjack .bj-stake-picker { max-width: none; }
+  .blackjack .bj-deal { width: 100%; min-height: 50px; margin: 22px 0 3px; }
+  .blackjack .bj-actions-panel { gap: 20px; }
+  .blackjack .bj-actions { width: 100%; margin-left: 0; gap: 10px; }
+  .blackjack .bj-action { flex: 1 1 0; min-width: 0; padding: 12px 8px; gap: 6px; font-size: 11px; }
+  .blackjack .bj-action svg { width: 14px; }
+  .blackjack .bj-session { padding: 20px; }
+  .blackjack .bj-session__stats { gap: 12px; grid-template-columns: minmax(0,1fr) minmax(0,1fr) minmax(0,1.5fr); }
+  .blackjack .bj-session__stats > div + div { padding-left: 12px; }
+  .blackjack .bj-session__stats strong { font-size: 20px; }
+  .blackjack .bj-session__stats strong small { display: none; }
+  .blackjack .bj-history summary { padding: 19px 20px; font-size: 12px; gap: 8px; }
+  .blackjack .bj-history summary > small { font-size: 8px; }
+}
+
+@media (max-width: 420px) {
+  .blackjack .bj-felt { padding-left: 14px; padding-right: 14px; }
+  .blackjack .bj-seat__heading h3 { font-size: 11px; }
+  .blackjack .bj-card, .blackjack .bj-card-slot { flex-basis: 77px; width: 77px; height: 111px; }
+  .blackjack .bj-cards { min-height: 117px; gap: 8px; }
+  .blackjack .bj-card__corner { width: 13px; }
+  .blackjack .bj-card__corner b { font-size: 14px; }
+  .blackjack .bj-card__corner i { font-size: 16px; }
+  .blackjack .bj-card__pips { inset: 12px 18px; }
+  .blackjack .bj-card__pips i { font-size: 18px; }
+  .blackjack .bj-card__portrait { inset: 20px 19px; }
+  .blackjack .bj-card__portrait b { font-size: 22px; }
+  .blackjack .bj-card__portrait > svg { width: 19px; height: 18px; }
+  .blackjack .bj-card__portrait i { font-size: 18px; }
+  .blackjack .bj-card__portrait--ace { inset: 19px 15px; font-size: 44px; }
+  .blackjack .bj-card__back-frame { gap: 4px; }
+  .blackjack .bj-card__back-frame > span { font-size: 18px; }
+  .blackjack .bj-card__back-frame > svg { width: 21px; }
+  .blackjack .bj-card__back-frame > i { font-size: 3px; letter-spacing: .5px; }
+  .blackjack .bj-seat__note { font-size: 9px; }
+  .blackjack .bj-controls { padding-left: 17px; padding-right: 17px; }
+  .blackjack .bj-presets { gap: 15px; }
+  .blackjack .bj-chip { flex-basis: 39px; width: 39px; height: 39px; }
+  .blackjack .bj-chip > span { width: 25px; height: 25px; font-size: 8px; }
+  .blackjack .bj-custom-stake { padding-left: 10px; gap: 7px; }
+  .blackjack .bj-custom-stake input { font-size: 17px; }
+  .blackjack .bj-custom-stake > span { font-size: 9px; }
+  .blackjack .bj-custom-stake > button { padding-left: 8px; padding-right: 8px; font-size: 9px; }
+  .blackjack .bj-session { padding-left: 16px; padding-right: 16px; }
+  .blackjack .bj-section-heading h3 { font-size: 12px; }
+  .blackjack .bj-session__stats span { font-size: 9px; }
+  .blackjack .bj-session__stats strong { font-size: 18px; }
+  .blackjack .bj-history summary > small { display: none; }
+  .blackjack .bj-outcome__return { font-size: 9px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .blackjack .bj-history summary > svg:last-child { transition: none; }
+}

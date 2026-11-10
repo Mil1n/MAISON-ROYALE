@@ -11,18 +11,18 @@ const legacyWon=(id='legacy-win')=>({id,date,number:0,bets:[{id:'n:0',amount:100
 afterEach(()=>vi.unstubAllGlobals());
 
 describe('exact save serialization',()=>{
- it('starts a version 2 save with a bigint balance under the existing storage key',()=>{
-  expect(initial()).toEqual({version:2,balance:10000n,bets:[],lastBets:[],rounds:[],sound:true,autoSpin:true,pending:null});
+ it('starts a version 3 save with a bigint balance under the existing storage key',()=>{
+  expect(initial()).toEqual({version:3,activeGame:'roulette',blackjack:{hand:null,rounds:[]},balance:10000n,bets:[],lastBets:[],rounds:[],sound:true,autoSpin:true,pending:null});
   expect(KEY).toBe('maison-royale-v1');
  });
  it('round trips balances, bets, history and signed results far above Number.MAX_SAFE_INTEGER',()=>{
   const huge=12345678901234567890123456789012345678901234567890n;
   const save={...initial(),balance:huge,bets:[{id:'red',amount:huge}],lastBets:[{id:'n:00',amount:huge}],rounds:[won('huge-win',huge),lost('huge-loss',huge)],autoSpin:false};
   const serialized=stringifySave(save,2),json=JSON.parse(serialized);
-  expect(json.version).toBe(2);
+  expect(json.version).toBe(3);
   expect(json.balance).toBe(huge.toString());
   expect(json.rounds[1].net).toBe((-huge).toString());
-  expect(serialized).toContain('\n  "version": 2');
+  expect(serialized).toContain('\n  "version": 3');
   expect(parseSave(serialized)).toEqual(save);
  });
  it('credits an unlimited interrupted double-zero payout exactly once',()=>{
@@ -54,7 +54,7 @@ describe('version 1 migration',()=>{
  it('preserves a one-billion balance, numeric history and legacy pending without a payout cap',()=>{
   const history=legacyWon('history'),pending=legacyWon('pending');
   const parsed=parseSave(JSON.stringify({...legacy(),balance:1000000000,lastBets:pending.bets,rounds:[history],pending}));
-  expect(parsed.version).toBe(2);
+  expect(parsed.version).toBe(3);
   expect(parsed.autoSpin).toBe(true);
   expect(parsed.balance).toBe(1000000000n);
   expect(parsed.rounds[0]).toEqual({...history,bets:[{id:'n:0',amount:1000000000n}],stake:1000000000n,payout:36000000000n,net:35000000000n});
@@ -88,10 +88,10 @@ describe('save validation',()=>{
  it.each(['{}','null','[]','invalid JSON','{"version":3}'])('rejects invalid top-level data: %s',raw=>{
   expect(()=>parseSave(raw)).toThrow();
  });
- it.each(['','01','00','-0','+1','-1','1e6','1.0','0.1',' 1','1 ',1,null,true])('rejects noncanonical v2 balance %s',balance=>{
+ it.each(['','01','00','-0','+1','-1','1e6','1.0','0.1',' 1','1 ',1,null,true])('rejects noncanonical current balance %s',balance=>{
   expect(()=>parseSave(JSON.stringify({...wire(),balance}))).toThrow();
  });
- it.each(['-0','+100','01','-01','1e3','1.5',100])('rejects noncanonical v2 signed net %s',net=>{
+ it.each(['-0','+100','01','-01','1e3','1.5',100])('rejects noncanonical current signed net %s',net=>{
   const source=JSON.parse(stringifySave({...initial(),rounds:[won()]}));
   source.rounds[0].net=net;
   expect(()=>parseSave(JSON.stringify(source))).toThrow();
@@ -150,5 +150,179 @@ describe('browser persistence',()=>{
  it('reports a storage write failure without throwing',()=>{
   vi.stubGlobal('localStorage',{setItem:()=>{throw new Error('quota exceeded');}});
   expect(persist(initial())).toBe(false);
+ });
+});
+
+// Blackjack shares the wallet but retains an active hand without settling it.
+// Card ranks use card % 13 (0 = ace); all fixtures use one physical 52-card deck.
+function activeBlackjack(stake=100n,player=[9,6],dealer=[8,5]) {
+ const dealt=new Set([...player,...dealer]);
+ return {id:'active-bj',date,stake,player,dealer,deck:Array.from({length:52},(_,i)=>i).filter(card=>!dealt.has(card))};
+}
+function blackjackResult(id='bj-win',stake=100n) {
+ return {id,date,stake,player:[9,11],dealer:[8,7],outcome:'win' as const,payout:stake*2n,net:stake,doubled:false};
+}
+function blackjackNatural(id='bj-natural',stake=100n) {
+ return {id,date,stake,player:[0,12],dealer:[9,7],outcome:'blackjack' as const,payout:stake*5n/2n,net:stake*3n/2n,doubled:false};
+}
+function blackjackWire() {
+ return JSON.parse(stringifySave({...initial(),activeGame:'blackjack',blackjack:{hand:activeBlackjack(),rounds:[]}}));
+}
+
+describe('shared blackjack saves and migration',()=>{
+ it('migrates a v2 wallet, roulette history, bets and settings without changing their exact values',()=>{
+  const huge=10n**100n+7n;
+  const save={...initial(),balance:huge,bets:[{id:'black',amount:huge}],lastBets:[{id:'n:00',amount:200n}],rounds:[won('roulette-history',huge)],autoSpin:false};
+  const old=JSON.parse(stringifySave(save));old.version=2;delete old.blackjack;delete old.activeGame;
+  expect(parseSave(JSON.stringify(old))).toEqual(save);
+ });
+ it('migrates an old v2 pending roulette result with the full payout and empty blackjack state',()=>{
+  const huge=10n**80n;
+  const old=JSON.parse(stringifySave({...initial(),balance:huge,pending:won('pending',huge)}));old.version=2;delete old.blackjack;delete old.activeGame;
+  const restored=recover(parseSave(JSON.stringify(old)));
+  expect(restored.version).toBe(3);
+  expect(restored.activeGame).toBe('roulette');
+  expect(restored.blackjack).toEqual({hand:null,rounds:[]});
+  expect(restored.balance).toBe(huge*37n);
+ });
+ it('preserves an active unlimited blackjack stake, exact deck order and reserved balance through repeated reloads',()=>{
+  const huge=10n**120n;
+  const hand=activeBlackjack(huge,[9,6,1],[8,5]);
+  const save={...initial(),balance:huge+1n,activeGame:'blackjack' as const,blackjack:{hand,rounds:[blackjackNatural('past',huge)]}};
+  const parsed=parseSave(stringifySave(save));
+  expect(parsed).toEqual(save);
+  expect(recover(parsed)).toBe(parsed);
+  const again=recover(parseSave(stringifySave(recover(parsed))));
+  expect(again.balance).toBe(huge+1n);
+  expect(again.blackjack.hand).toEqual(hand);
+  expect(again.blackjack.rounds).toHaveLength(1);
+ });
+ it('routes a restored unfinished hand to blackjack rather than hiding it on the roulette screen',()=>{
+  const source=blackjackWire();source.activeGame='roulette';
+  const restored=parseSave(JSON.stringify(source));
+  expect(restored.activeGame).toBe('blackjack');
+  expect(restored.blackjack.hand?.id).toBe('active-bj');
+ });
+ it('does not re-credit historical blackjack returns during recovery',()=>{
+  const huge=10n**60n;
+  const save={...initial(),balance:huge,blackjack:{hand:null,rounds:[blackjackNatural('already-paid',huge)]}};
+  expect(recover(parseSave(stringifySave(save)))).toEqual(save);
+ });
+ it('round trips exact natural, normal, doubled, losing and push historical payouts',()=>{
+  const huge=10n**80n;
+  const doubled={id:'doubled',date,stake:huge*2n,player:[5,4,9],dealer:[8,7],outcome:'win' as const,payout:huge*4n,net:huge*2n,doubled:true};
+  const loss={id:'bj-loss',date,stake:huge,player:[9,6],dealer:[8,10],outcome:'loss' as const,payout:0n,net:-huge,doubled:false};
+  const push={id:'bj-push',date,stake:huge,player:[9,7],dealer:[8,21],outcome:'push' as const,payout:huge,net:0n,doubled:false};
+  const save={...initial(),blackjack:{hand:null,rounds:[blackjackNatural('natural',huge),blackjackResult('normal',huge),doubled,loss,push]}};
+  const serialized=stringifySave(save),json=JSON.parse(serialized);
+  expect(json.blackjack.rounds[0].payout).toBe((huge*5n/2n).toString());
+  expect(parseSave(serialized)).toEqual(save);
+ });
+ it('persists and loads an active hand without refunding or settling its already reserved stake',()=>{
+  const values=new Map<string,string>();
+  vi.stubGlobal('localStorage',{getItem:(key:string)=>values.get(key)??null,setItem:(key:string,value:string)=>values.set(key,value)});
+  const save={...initial(),balance:9000n,activeGame:'blackjack' as const,blackjack:{hand:activeBlackjack(1000n),rounds:[]}};
+  expect(persist(save)).toBe(true);
+  expect(load()).toEqual({save,warning:''});
+  expect(load()).toEqual({save,warning:''});
+  expect(values.get(KEY)).toBe(stringifySave(save));
+ });
+});
+
+describe('blackjack save validation',()=>{
+ it.each([null,{},'roulette',[],{hand:null},{rounds:[]}])('requires complete blackjack state in version 3: %j',blackjack=>{
+  expect(()=>parseSave(JSON.stringify({...wire(),blackjack}))).toThrow();
+ });
+ it('requires a known active game in version 3',()=>{
+  for(const activeGame of [undefined,null,'poker',1])expect(()=>parseSave(JSON.stringify({...wire(),activeGame}))).toThrow();
+ });
+ it('requires a complete nonduplicated 52-card partition for active hands',()=>{
+  const source=blackjackWire();
+  for(const mutate of [
+   (hand:ReturnType<typeof activeBlackjack>)=>{hand.deck[0]=hand.player[0];},
+   (hand:ReturnType<typeof activeBlackjack>)=>{hand.deck.pop();},
+   (hand:ReturnType<typeof activeBlackjack>)=>{hand.player[1]=hand.player[0];},
+   (hand:ReturnType<typeof activeBlackjack>)=>{hand.dealer[0]=hand.player[0];},
+   (hand:ReturnType<typeof activeBlackjack>)=>{hand.dealer.push(hand.deck.pop()!);},
+  ]){
+   const copy=structuredClone(source);mutate(copy.blackjack.hand);
+   expect(()=>parseSave(JSON.stringify(copy))).toThrow();
+  }
+ });
+ it.each([-1,52,1.5,'9',null])('rejects invalid card %s',card=>{
+  const source=blackjackWire();source.blackjack.hand.player[0]=card;
+  expect(()=>parseSave(JSON.stringify(source))).toThrow();
+ });
+ it('rejects missing arrays, insufficient cards and completed active hands',()=>{
+  for(const field of ['player','dealer','deck']){
+   const source=blackjackWire();delete source.blackjack.hand[field];expect(()=>parseSave(JSON.stringify(source))).toThrow();
+  }
+  for(const [player,dealer] of [
+   [[9],[8,5]],
+   [[0,12],[9,7]],
+   [[9,6,3],[8,5]],
+   [[9,10,11],[8,5]],
+   [[9,6],[0,12]],
+  ]){
+   const save={...initial(),blackjack:{hand:activeBlackjack(100n,player,dealer),rounds:[]}};
+   expect(()=>parseSave(stringifySave(save))).toThrow();
+  }
+ });
+ it.each(['0','1','3','-2','01','1e4',100])('requires an exact positive even blackjack stake: %s',stake=>{
+  const source=blackjackWire();source.blackjack.hand.stake=stake;
+  expect(()=>parseSave(JSON.stringify(source))).toThrow();
+ });
+ it('rejects concurrent unfinished rounds in the two games',()=>{
+  const save={...initial(),pending:won(),blackjack:{hand:activeBlackjack(),rounds:[]}};
+  expect(()=>parseSave(stringifySave(save))).toThrow();
+ });
+ it('requires distinct blackjack round ids and excludes the active id from settled history',()=>{
+  const result=blackjackResult();
+  expect(()=>parseSave(stringifySave({...initial(),blackjack:{hand:null,rounds:[result,result]}}))).toThrow();
+  expect(()=>parseSave(stringifySave({...initial(),blackjack:{hand:activeBlackjack(),rounds:[blackjackResult('active-bj')]}}))).toThrow();
+ });
+ it('rejects invalid dates or empty identities in blackjack history and active state',()=>{
+  for(const change of [{id:''},{date:'not a date'}]){
+   expect(()=>parseSave(stringifySave({...initial(),blackjack:{hand:{...activeBlackjack(),...change},rounds:[]}}))).toThrow();
+   expect(()=>parseSave(stringifySave({...initial(),blackjack:{hand:null,rounds:[{...blackjackResult(),...change}]}}))).toThrow();
+  }
+ });
+ it('validates historical cards, result, payout and net rather than trusting imported winnings',()=>{
+  const source=JSON.parse(stringifySave({...initial(),blackjack:{hand:null,rounds:[blackjackNatural()]}}));
+  for(const change of [{payout:'251'},{net:'151'},{outcome:'win'},{player:[0,0]},{dealer:[9,12]},{stake:'101'},{doubled:'yes'}]){
+   const copy=structuredClone(source);Object.assign(copy.blackjack.rounds[0],change);
+   expect(()=>parseSave(JSON.stringify(copy))).toThrow();
+  }
+ });
+ it('requires a doubled hand to have exactly three player cards and twice an originally even stake',()=>{
+  const doubled={...blackjackResult(),doubled:true};
+  expect(()=>parseSave(stringifySave({...initial(),blackjack:{hand:null,rounds:[doubled]}}))).toThrow();
+  const badStake={id:'bad-double',date,stake:2n,player:[5,4,9],dealer:[8,7],outcome:'win' as const,payout:4n,net:2n,doubled:true};
+  expect(()=>parseSave(stringifySave({...initial(),blackjack:{hand:null,rounds:[badStake]}}))).toThrow();
+ });
+ it('limits blackjack history to 10000 records while accepting exact winnings of any size',()=>{
+  const rounds=Array.from({length:10001},(_,i)=>blackjackResult(String(i),10n**100n));
+  expect(()=>parseSave(stringifySave({...initial(),blackjack:{hand:null,rounds}}))).toThrow();
+  expect(parseSave(stringifySave({...initial(),blackjack:{hand:null,rounds:[rounds[0]]}})).blackjack.rounds[0].payout).toBe(2n*10n**100n);
+ });
+});
+
+
+describe('completed blackjack dealer state',()=>{
+ it('rejects a normal round settled before the dealer reaches 17',()=>{
+  const unfinished={...blackjackResult(),dealer:[8,5]};
+  expect(()=>parseSave(stringifySave({...initial(),blackjack:{hand:null,rounds:[unfinished]}}))).toThrow();
+ });
+ it('accepts immediate player bust or natural resolution without dealer draws',()=>{
+  const bust={id:'bust',date,stake:100n,player:[9,10,11],dealer:[8,5],outcome:'loss' as const,payout:0n,net:-100n,doubled:false};
+  const natural={...blackjackNatural(),dealer:[8,5]};
+  const save={...initial(),blackjack:{hand:null,rounds:[bust,natural]}};
+  expect(parseSave(stringifySave(save))).toEqual(save);
+ });
+ it('rejects extra dealer cards after an immediate natural or player bust',()=>{
+  for(const entry of [
+   {...blackjackNatural(),dealer:[8,5,3]},
+   {id:'bust',date,stake:100n,player:[9,10,11],dealer:[8,5,3],outcome:'loss' as const,payout:0n,net:-100n,doubled:false},
+  ])expect(()=>parseSave(stringifySave({...initial(),blackjack:{hand:null,rounds:[entry]}}))).toThrow();
  });
 });

@@ -119,3 +119,12 @@ h1{font-weight:400;letter-spacing:-1.5px;line-height:1.2}
 .header-right{min-width:0}
 .header-right>.balance{flex:1 1 auto;min-width:0}
 .header-right>button,.brand{flex-shrink:0}
+
+.game-tabs{display:flex;align-items:center;gap:6px;border-bottom:1px solid #bca47335;margin-bottom:30px;padding:0 0 10px}
+.game-tabs>button{display:flex;align-items:center;gap:9px;padding:12px 20px;border:1px solid transparent;border-radius:6px;background:none;color:#8fa38d;font-size:12px;white-space:nowrap}
+.game-tabs>button>span{color:#cfb883;font-size:18px}
+.game-tabs>button[aria-selected="true"]{color:#ead7ad;background:#baa36b15;border-color:#bca47355}
+.game-tabs>button:hover:not(:disabled){background:#baa36b0b}
+.game-tabs-note{margin-left:auto;font-size:10px;color:#829b83;text-align:right}
+@media(max-width:850px){.game-tabs-note{display:none}}
+@media(max-width:520px){.game-tabs{margin-bottom:24px;gap:5px}.game-tabs>button{flex:1;justify-content:center;padding:10px 8px;font-size:11px}}
