@@ -94,3 +94,7 @@ h1{font-weight:400;letter-spacing:-1.5px;line-height:1.2}
 .bet-cell.zero,.bet-cell.zero:hover:not(:disabled),.bet-cell.zero.winning{background:var(--roulette-zero)!important}
 .result-number.green,.number-dot.green{background:var(--roulette-zero)}
 .ball-overlay{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2;overflow:visible}
+
+.withdraw-button{display:flex;align-items:center;justify-content:center;gap:7px;min-height:33px;padding:7px 11px;border:1px solid #b79b5f6b;border-radius:5px;background:#b79b5f12;color:#d8b878;font-size:10px;white-space:nowrap}
+.balance-withdraw-button{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin-top:15px;padding:12px;border:1px solid #bca47365;border-radius:5px;background:#bca4730d;color:#dec18a;font-size:12px}
+@media(max-width:520px){.withdraw-button{width:27px;min-height:27px;height:27px;padding:0}.withdraw-button>span{display:none}.header-right{gap:6px}}
