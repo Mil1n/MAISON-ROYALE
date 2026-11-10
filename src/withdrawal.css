@@ -13,10 +13,10 @@
 }
 
 .withdrawal .withdrawal__balance {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  min-width: 0;
   padding: 16px;
   margin-bottom: 25px;
   border: 1px solid #c9ad7245;
@@ -38,10 +38,15 @@
 }
 
 .withdrawal .withdrawal__balance strong {
-  font-size: 22px;
+  min-width: 0;
+  max-width: 100%;
+  font-size: clamp(16px, 5.5vw, 22px);
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.45;
   color: #e9d4a8;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .withdrawal .withdrawal__balance small {
@@ -199,7 +204,7 @@
 }
 
 .withdrawal .withdrawal__amount-box input {
-  flex: 1;
+  flex: 1 1 0;
   min-width: 0;
   width: 100%;
   padding: 0;
@@ -220,11 +225,13 @@
 }
 
 .withdrawal .withdrawal__amount-unit {
+  flex-shrink: 0;
   color: #93a38b;
   font-size: 10px;
 }
 
 .withdrawal .withdrawal__max {
+  flex-shrink: 0;
   padding: 7px 10px;
   border: 1px solid #c9ad7260;
   border-radius: 4px;
@@ -327,7 +334,7 @@
   }
 
   .withdrawal .withdrawal__balance strong {
-    font-size: 18px;
+    font-size: clamp(16px, 4.8vw, 18px);
   }
 
   .withdrawal .withdrawal__balance small {

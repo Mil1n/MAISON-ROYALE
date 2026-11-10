@@ -1,23 +1,84 @@
-import { MAX_MONEY, payout, total, validId, validPocket, type Bet, type Round } from './game';
-export type Save = { version:1; balance:number; bets:Bet[]; lastBets:Bet[]; rounds:Round[]; sound:boolean; autoSpin:boolean; pending:Round|null };
+import { payout, total, validId, validPocket, type Bet, type Round } from './game';
+
+export type Save = {
+ version:2;
+ balance:bigint;
+ bets:Bet[];
+ lastBets:Bet[];
+ rounds:Round[];
+ sound:boolean;
+ autoSpin:boolean;
+ pending:Round|null;
+};
 export const KEY='maison-royale-v1';
-export const initial = ():Save=>({version:1,balance:10000,bets:[],lastBets:[],rounds:[],sound:true,autoSpin:true,pending:null});
-const integer=(v:unknown,max=MAX_MONEY):v is number=>typeof v==='number'&&Number.isSafeInteger(v)&&v>=0&&v<=max;
-function checkBets(v:unknown):v is Bet[]{return Array.isArray(v)&&v.length<=2000&&v.every(b=>b&&validId(b.id)&&integer(b.amount)&&b.amount>0)&&total(v)<=MAX_MONEY;}
-function checkRound(r:unknown):r is Round {
- if(!r||typeof r!=='object') return false;
- const x=r as Round;
- return typeof x.id==='string'&&x.id.length<100&&typeof x.date==='string'&&Number.isFinite(Date.parse(x.date))&&validPocket(x.number)&&checkBets(x.bets)&&x.stake>0&&x.stake===total(x.bets)&&x.payout===payout(x.bets,x.number)&&x.net===x.payout-x.stake;
+export const initial = ():Save=>({version:2,balance:10000n,bets:[],lastBets:[],rounds:[],sound:true,autoSpin:true,pending:null});
+
+const invalid = ():never => {throw new Error('Файл сохранения повреждён или имеет неподдерживаемый формат.');};
+function record(value:unknown):Record<string,unknown> {
+ if(!value||typeof value!=='object'||Array.isArray(value)) return invalid();
+ return value as Record<string,unknown>;
+}
+// v1 used JSON numbers; only safe integers can be migrated without guessing
+// digits already lost to floating-point rounding. v2 stores exact decimal text.
+function amount(value:unknown,version:1|2,signed=false):bigint {
+ if(version===1){
+  if(typeof value!=='number'||!Number.isSafeInteger(value)||(!signed&&value<0)) return invalid();
+  return BigInt(value);
+ }
+ if(typeof value!=='string'||!(signed?/^(0|-?[1-9][0-9]*)$/:/^(0|[1-9][0-9]*)$/).test(value)) return invalid();
+ return BigInt(value);
+}
+function bets(value:unknown,version:1|2):Bet[] {
+ if(!Array.isArray(value)||value.length>2000) return invalid();
+ return value.map(entry=>{
+  const bet=record(entry);
+  if(!validId(bet.id)) return invalid();
+  const stake=amount(bet.amount,version);
+  if(stake<=0n) return invalid();
+  return {id:bet.id,amount:stake};
+ });
+}
+function round(value:unknown,version:1|2):Round {
+ const entry=record(value);
+ if(typeof entry.id!=='string'||!entry.id.length||entry.id.length>=100||typeof entry.date!=='string'||!Number.isFinite(Date.parse(entry.date))||!validPocket(entry.number)) return invalid();
+ const placed=bets(entry.bets,version),stake=amount(entry.stake,version),paid=amount(entry.payout,version),net=amount(entry.net,version,true);
+ if(stake<=0n||stake!==total(placed)||paid!==payout(placed,entry.number)||net!==paid-stake) return invalid();
+ return {id:entry.id,date:entry.date,number:entry.number,bets:placed,stake,payout:paid,net};
 }
 export function parseSave(raw:string):Save {
- const s=JSON.parse(raw);
- if(!s||s.version!==1||!integer(s.balance)||!checkBets(s.bets)||!checkBets(s.lastBets)||!Array.isArray(s.rounds)||s.rounds.length>10000||!s.rounds.every(checkRound)||typeof s.sound!=='boolean'||(s.autoSpin!==undefined&&typeof s.autoSpin!=='boolean')||(s.pending!==null&&!checkRound(s.pending))||s.balance+total(s.bets)>MAX_MONEY||(s.pending&&s.balance+s.pending.payout>MAX_MONEY)||new Set(s.rounds.map((r:Round)=>r.id)).size!==s.rounds.length) throw new Error('Файл сохранения повреждён или имеет неподдерживаемый формат.');
- if(s.pending&&(s.bets.length||s.rounds.some((r:Round)=>r.id===s.pending.id))) throw new Error('Некорректный незавершённый раунд.');
- return {...s,autoSpin:s.autoSpin??true};
+ const source=record(JSON.parse(raw));
+ if(source.version!==1&&source.version!==2) return invalid();
+ const version=source.version;
+ if(typeof source.sound!=='boolean'||(source.autoSpin!==undefined&&typeof source.autoSpin!=='boolean')||(version===2&&typeof source.autoSpin!=='boolean')||!Array.isArray(source.rounds)||source.rounds.length>10000) return invalid();
+ const parsed:Save={
+  version:2,
+  balance:amount(source.balance,version),
+  bets:bets(source.bets,version),
+  lastBets:bets(source.lastBets,version),
+  rounds:source.rounds.map(entry=>round(entry,version)),
+  sound:source.sound,
+  autoSpin:source.autoSpin===undefined?true:source.autoSpin as boolean,
+  pending:source.pending===null?null:round(source.pending,version),
+ };
+ const ids=new Set(parsed.rounds.map(entry=>entry.id));
+ if(ids.size!==parsed.rounds.length) return invalid();
+ if(parsed.pending&&(parsed.bets.length||ids.has(parsed.pending.id))) throw new Error('Некорректный незавершённый раунд.');
+ return parsed;
 }
-export function recover(s:Save):Save {return s.pending?{...s,balance:Math.min(MAX_MONEY,s.balance+s.pending.payout),rounds:[s.pending,...s.rounds].slice(0,10000),pending:null}:s;}
+export function stringifySave(save:Save,space?:number):string {
+ return JSON.stringify(save,(_key,value:unknown)=>typeof value==='bigint'?value.toString():value,space);
+}
+export function recover(save:Save):Save {
+ return save.pending?{...save,balance:save.balance+save.pending.payout,rounds:[save.pending,...save.rounds].slice(0,10000),pending:null}:save;
+}
 export function load():{save:Save;warning:string} {
- try { const raw=localStorage.getItem(KEY);return {save:raw?recover(parseSave(raw)):initial(),warning:''}; }
- catch {return {save:initial(),warning:'Не удалось прочитать сохранение. Используется новый баланс; исходные данные не изменены до следующего действия.'};}
+ try {
+  const raw=localStorage.getItem(KEY);
+  return {save:raw?recover(parseSave(raw)):initial(),warning:''};
+ }catch {
+  return {save:initial(),warning:'Не удалось прочитать сохранение. Используется новый баланс; исходные данные не изменены до следующего действия.'};
+ }
 }
-export function persist(s:Save):boolean {try{localStorage.setItem(KEY,JSON.stringify(s));return true;}catch{return false;}}
+export function persist(save:Save):boolean {
+ try {localStorage.setItem(KEY,stringifySave(save));return true;}catch{return false;}
+}

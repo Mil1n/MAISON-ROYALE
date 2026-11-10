@@ -1,10 +1,10 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import { ArrowUpRight, CreditCard, Landmark, ShieldCheck, Wallet } from 'lucide-react';
-import { money } from '../game';
+import { money, parseMoneyInput } from '../game';
 import '../withdrawal.css';
 
 type WithdrawalProps = {
-  balance: number;
+  balance: bigint;
   imageSrc: string;
   onClose: () => void;
 };
@@ -21,7 +21,7 @@ export function Withdrawal({ balance, imageSrc, onClose }: WithdrawalProps) {
   const amountId = `${id}-amount`;
   const hintId = `${id}-hint`;
   const errorId = `${id}-error`;
-  const validBalance = Number.isFinite(balance) && Number.isSafeInteger(balance) && balance >= 0;
+  const validBalance = typeof balance === 'bigint' && balance >= 0n;
 
   useEffect(() => {
     if (stage === 'result') closeRef.current?.focus();
@@ -29,13 +29,12 @@ export function Withdrawal({ balance, imageSrc, onClose }: WithdrawalProps) {
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const digits = amount.replace(/\s/g, '');
-    const value = /^\d+$/.test(digits) ? Number(digits) : NaN;
+    const value = parseMoneyInput(amount);
     if (!validBalance) {
       setError('Не удалось определить доступный баланс. Закройте окно и попробуйте снова.');
       return;
     }
-    if (!Number.isSafeInteger(value) || value <= 0) {
+    if (value === null || value <= 0n) {
       setError('Введите положительную целую сумму.');
       return;
     }
@@ -119,8 +118,8 @@ export function Withdrawal({ balance, imageSrc, onClose }: WithdrawalProps) {
             <button
               type="button"
               className="withdrawal__max"
-              disabled={!validBalance || balance === 0}
-              onClick={() => { setAmount(String(balance)); setError(''); }}
+              disabled={!validBalance || balance === 0n}
+              onClick={() => { setAmount(balance.toString()); setError(''); }}
             >
               Всё
             </button>

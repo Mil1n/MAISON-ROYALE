@@ -98,3 +98,24 @@ h1{font-weight:400;letter-spacing:-1.5px;line-height:1.2}
 .withdraw-button{display:flex;align-items:center;justify-content:center;gap:7px;min-height:33px;padding:7px 11px;border:1px solid #b79b5f6b;border-radius:5px;background:#b79b5f12;color:#d8b878;font-size:10px;white-space:nowrap}
 .balance-withdraw-button{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin-top:15px;padding:12px;border:1px solid #bca47365;border-radius:5px;background:#bca4730d;color:#dec18a;font-size:12px}
 @media(max-width:520px){.withdraw-button{width:27px;min-height:27px;height:27px;padding:0}.withdraw-button>span{display:none}.header-right{gap:6px}}
+
+/* Exact balances can grow without widening the table or mobile header. */
+.balance{min-width:0;max-width:280px}
+.balance strong{min-width:0}
+.balance-amount{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.balance strong>svg,.balance strong>small{flex-shrink:0}
+.round-stake{min-width:120px;max-width:210px}
+.round-stake strong,.session-stats strong,.modal-balance{overflow-wrap:anywhere;min-width:0}
+.session-stats>div{min-width:0}
+.amount-hint{overflow-wrap:anywhere}
+.full-stats>div>span{min-width:0;flex:1}
+.full-stats strong{white-space:normal;overflow-wrap:anywhere;max-width:60%;text-align:right;min-width:0}
+.placed-chip{width:31px;min-width:31px;max-width:31px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:7px}
+.toast>span{min-width:0;overflow-wrap:anywhere}
+@media(max-width:1100px){.balance{max-width:220px}.round-stake{min-width:100px;max-width:180px}}
+@media(max-width:960px){.round-stake{max-width:50%}}
+@media(max-width:520px){.balance{max-width:140px}.balance strong{font-size:16px;gap:0}.round-stake{min-width:90px}.session-stats strong{font-size:18px}}
+
+.header-right{min-width:0}
+.header-right>.balance{flex:1 1 auto;min-width:0}
+.header-right>button,.brand{flex-shrink:0}
