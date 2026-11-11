@@ -140,6 +140,7 @@
   perspective: 900px;
 }
 
+.blackjack .bj-card-shell,
 .blackjack .bj-card,
 .blackjack .bj-card-slot {
   position: relative;
@@ -817,7 +818,7 @@
   .blackjack .bj-table__top > span:last-child { display: none; }
   .blackjack .bj-felt { padding: 24px 18px; }
   .blackjack .bj-cards { gap: 9px; min-height: 130px; }
-  .blackjack .bj-card, .blackjack .bj-card-slot { flex-basis: 86px; width: 86px; height: 124px; border-radius: 6px; }
+  .blackjack .bj-card-shell, .blackjack .bj-card, .blackjack .bj-card-slot { flex-basis: 86px; width: 86px; height: 124px; border-radius: 6px; }
   .blackjack .bj-card__corner { left: 5px; top: 5px; width: 15px; }
   .blackjack .bj-card__corner b { font-size: 16px; }
   .blackjack .bj-card__corner i { font-size: 17px; }
@@ -851,7 +852,7 @@
 @media (max-width: 420px) {
   .blackjack .bj-felt { padding-left: 14px; padding-right: 14px; }
   .blackjack .bj-seat__heading h3 { font-size: 11px; }
-  .blackjack .bj-card, .blackjack .bj-card-slot { flex-basis: 77px; width: 77px; height: 111px; }
+  .blackjack .bj-card-shell, .blackjack .bj-card, .blackjack .bj-card-slot { flex-basis: 77px; width: 77px; height: 111px; }
   .blackjack .bj-cards { min-height: 117px; gap: 8px; }
   .blackjack .bj-card__corner { width: 13px; }
   .blackjack .bj-card__corner b { font-size: 14px; }
@@ -886,4 +887,43 @@
 
 @media (prefers-reduced-motion: reduce) {
   .blackjack .bj-history summary > svg:last-child { transition: none; }
+}
+
+/* A stable shell keeps the same physical card while its hidden face flips. */
+.blackjack .bj-card-shell {
+  position: relative;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  perspective: 900px;
+}
+
+.blackjack .bj-card-shell > .bj-card {
+  width: 100%;
+  height: 100%;
+  transform-origin: center;
+}
+
+.blackjack .bj-settlement {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 143px;
+}
+
+.blackjack .bj-settlement .bj-outcome {
+  width: min(100%, 760px);
+  margin-top: 18px;
+}
+
+.blackjack .bj-settlement .bj-active-stake {
+  margin-top: 18px;
+}
+
+.blackjack button {
+  transition: opacity .2s, background-color .2s, box-shadow .2s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .blackjack button { transition: none; }
 }

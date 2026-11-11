@@ -18,7 +18,15 @@ describe('American roulette',()=>{
  it('returns stake plus standard profit',()=>{expect(payout([{id:'n:17',amount:100n}],17)).toBe(3600n);expect(payout([{id:'red',amount:100n}],3)).toBe(200n);expect(payout([{id:'dozen:2',amount:100n}],17)).toBe(300n);expect(payout([{id:'col:3',amount:100n}],36)).toBe(300n);});
  it('settles multiple simultaneous bets independently',()=>{expect(payout([{id:'n:3',amount:10n},{id:'red',amount:50n},{id:'even',amount:100n},{id:'col:3',amount:10n}],3)).toBe(490n);});
  it('partitions nonzero numbers into exact outside groups',()=>{for(let n=1;n<=36;n++){expect(['red','black'].filter(id=>wins(id,n))).toHaveLength(1);expect(['even','odd'].filter(id=>wins(id,n))).toHaveLength(1);expect(['low','high'].filter(id=>wins(id,n))).toHaveLength(1);expect([1,2,3].filter(i=>wins(`dozen:${i}`,n))).toHaveLength(1);expect([1,2,3].filter(i=>wins(`col:${i}`,n))).toHaveLength(1);}});
- it('stops every pocket at the fixed pointer, including repeated spins',()=>{let angle=0;for(const n of [...WHEEL,...WHEEL]){const next=nextRotation(angle,n);expect(next-angle).toBeGreaterThanOrEqual(2160);const rem=(next+WHEEL.indexOf(n)*360/WHEEL.length)%360;expect(Math.min(rem,360-rem)).toBeCloseTo(0,6);angle=next;}});
+ it('lets the wheel stop anywhere independently of the chosen pocket',()=>{
+  let angle=0;
+  for(const fraction of [0,.12,.37,.61,.98]){
+   const next=nextRotation(angle,()=>fraction);
+   expect(next-angle).toBeCloseTo(2160+fraction*360,6);
+   expect(next).toBeGreaterThan(angle);
+   angle=next;
+  }
+ });
  it('rejects biased random samples before generating double zero',()=>{let calls=0;vi.spyOn(crypto,'getRandomValues').mockImplementation((arr)=>{(arr as Uint32Array)[0]=calls++===0?0xffffffff:19;return arr;});expect(randomNumber()).toBe('00');expect(calls).toBe(2);});
  it('can generate each pocket by unbiased index',()=>{let i=0;vi.spyOn(crypto,'getRandomValues').mockImplementation(arr=>{(arr as Uint32Array)[0]=i++;return arr;});expect(WHEEL.map(()=>randomNumber())).toEqual(WHEEL);});
  it('validates numbers and canonical betting identifiers',()=>{

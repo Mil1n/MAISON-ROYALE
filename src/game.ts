@@ -27,11 +27,10 @@ export function randomNumber():Pocket {
  do { crypto.getRandomValues(a); } while(a[0]>=limit);
  return WHEEL[a[0]%WHEEL.length];
 }
-export function nextRotation(current:number,n:Pocket):number {
- const index=WHEEL.indexOf(n);
- if(index<0) throw new RangeError('Неизвестный сектор рулетки.');
- const target=(360-index*360/WHEEL.length)%360;
- return current+360*6+((target-current%360+360)%360);
+/** The wheel stops independently of the selected number, anywhere on the circle. */
+export function nextRotation(current:number,random:()=>number=Math.random):number {
+ const fraction=Math.max(0,Math.min(1,random()));
+ return current+360*6+fraction*360;
 }
 export function betName(id:string):string {
  const names:Record<string,string>={red:'Красное',black:'Чёрное',even:'Чёт',odd:'Нечёт',low:'1–18',high:'19–36'};

@@ -1,13 +1,12 @@
-import { motion, useReducedMotion } from 'framer-motion';
+import { motion, useMotionValue } from 'framer-motion';
 import { Ball } from './Ball';
-import { SPIN_DURATION } from '../ballMotion';
 import { WHEEL, color, type Pocket } from '../game';
 const point = (r:number,a:number) => [250+r*Math.sin(a*Math.PI/180),250-r*Math.cos(a*Math.PI/180)];
 const sector = (outer:number,inner:number,a:number,b:number) => `M${point(outer,a)} A${outer} ${outer} 0 0 1 ${point(outer,b)} L${point(inner,b)} A${inner} ${inner} 0 0 0 ${point(inner,a)} Z`;
-export function Wheel({rotation,spinning,onComplete,result}:{rotation:number;spinning:boolean;onComplete:()=>void;result:Pocket|null}) {
+export function Wheel({rotation,spinning,onComplete,result,pocket}:{rotation:number;spinning:boolean;onComplete:()=>void;result:Pocket|null;pocket:Pocket}) {
  const step = 360/WHEEL.length;
- const reducedMotion = useReducedMotion();
- return <div className="wheel-wrap"><div className="wheel-shadow"/><div className="wheel-frame"><div className="wheel-pointer"/>
+ const wheelRotation = useMotionValue(rotation);
+ return <div className="wheel-wrap"><div className="wheel-shadow"/><div className="wheel-frame">
  <svg className="wheel" viewBox="0 0 500 500" role="img" aria-label="Колесо американской рулетки">
  <defs>
   <radialGradient id="wood"><stop stopColor="#30170e"/><stop offset=".83" stopColor="#311a12"/><stop offset=".88" stopColor="#8b5231"/><stop offset=".92" stopColor="#4b2819"/><stop offset=".97" stopColor="#8c5735"/><stop offset="1" stopColor="#25170f"/></radialGradient>
@@ -22,7 +21,7 @@ export function Wheel({rotation,spinning,onComplete,result}:{rotation:number;spi
  <circle cx="250" cy="250" r="248" fill="url(#wood)" stroke="#21160f" strokeWidth="4"/>
  <circle cx="250" cy="250" r="245" fill="url(#grain)"/>
  {[244,240,227,222].map((r,i)=><circle key={r} cx="250" cy="250" r={r} fill="none" stroke={i%2?'#26180e':'url(#brass)'} strokeWidth={i%2?2:2.5}/>)}
- <motion.g style={{transformOrigin:'250px 250px'}} animate={{rotate:rotation}} transition={{duration:spinning&&!reducedMotion?SPIN_DURATION:0,ease:[.12,.7,.13,1]}}>
+ <motion.g className="wheel-rotor" style={{transformOrigin:'250px 250px',rotate:wheelRotation}}>
  <circle cx="250" cy="250" r="220" fill="#151613"/>
  {WHEEL.map((n,i)=>{const a=i*step-step/2,b=a+step,c=color(n);return <g key={n}>
   <path d={sector(220,184,a,b)} fill={c==='red'?'#a82b2d':c==='green'?'var(--roulette-zero)':'#141b18'} stroke="#e0d0a8" strokeWidth=".75"/>
@@ -44,7 +43,7 @@ export function Wheel({rotation,spinning,onComplete,result}:{rotation:number;spi
  <circle cx="250" cy="250" r="247" fill="url(#shine)" pointerEvents="none"/>
  <path d="M52 124 A235 235 0 0 1 370 49" fill="none" stroke="#ffe3ab" strokeWidth="2" opacity=".3"/>
  </svg>
- <Ball spinning={spinning} rotation={rotation} onComplete={onComplete}/></div>
+ <Ball spinning={spinning} rotation={rotation} wheelRotation={wheelRotation} pocketIndex={WHEEL.indexOf(pocket)} onComplete={onComplete}/></div>
  <div className="wheel-caption"><span className="tiny-line"/> АМЕРИКАНСКАЯ РУЛЕТКА <span className="tiny-line"/></div>
  <div className="wheel-result" aria-live="polite">{spinning?'Ставки приняты. Удачи!':result===null?'Сделайте вашу ставку':<>Выпало <strong className={color(result)}>{result}</strong> · {color(result)==='red'?'красное':color(result)==='black'?'чёрное':result==='00'?'двойное зеро':'зеро'}</>}</div></div>;
 }

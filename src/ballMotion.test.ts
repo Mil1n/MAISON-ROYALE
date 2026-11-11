@@ -1,28 +1,46 @@
 import { describe, expect, it, vi } from 'vitest';
-import { BALL_POCKET_RADIUS, BALL_TRACK_RADIUS, createBallProfile, sampleBallMotion } from './ballMotion';
+import { WHEEL } from './game';
+import { BALL_POCKET_RADIUS, BALL_TRACK_RADIUS, createBallProfile, sampleBallMotion, sampleWheelRotation, type BallMotionPlan } from './ballMotion';
+
+const plan:BallMotionPlan={wheelStart:137,wheelEnd:137+6*360+83,pocketIndex:19,startAngle:72};
+const angleDifference=(a:number,b:number)=>((a-b+180)%360+360)%360-180;
+const relativeAngle=(p:number,seed=.5)=>{
+ const profile=createBallProfile(()=>seed);
+ return angleDifference(sampleBallMotion(p,profile,plan).angle,sampleWheelRotation(p,plan.wheelStart,plan.wheelEnd)+plan.pocketIndex*360/WHEEL.length);
+};
 
 describe('visual roulette ball motion',()=>{
- it('starts and finishes exactly in the pointer pocket for every profile',()=>{
-  for(const seed of [0,.15,.5,.85,1]){
-   const profile=createBallProfile(()=>seed);
-   expect(sampleBallMotion(0,profile)).toMatchObject({x:250,y:80,radius:BALL_POCKET_RADIUS,height:0});
-   expect(sampleBallMotion(1,profile)).toMatchObject({x:250,y:80,radius:BALL_POCKET_RADIUS,height:0});
-   expect(sampleBallMotion(1,profile).angle%360).toBe(-0);
+ it('lands in the chosen moving pocket at arbitrary wheel angles, including both zeros',()=>{
+  for(const wheelEnd of [2223,4711,9365])for(let pocketIndex=0;pocketIndex<WHEEL.length;pocketIndex++){
+   const spin={...plan,wheelEnd,pocketIndex};
+   const frame=sampleBallMotion(1,createBallProfile(()=>.5),spin);
+   expect(angleDifference(frame.angle,wheelEnd+pocketIndex*360/WHEEL.length)).toBeCloseTo(0,7);
+   expect(frame.radius).toBe(BALL_POCKET_RADIUS);
+   expect(frame.height).toBe(0);
   }
  });
- it('launches to the outer track, counter-rotates and falls into the pocket',()=>{
+ it('preserves the previous ball position at launch and can finish around the entire circle',()=>{
   const profile=createBallProfile(()=>.5);
-  const track=sampleBallMotion(.2,profile);
+  const first=sampleBallMotion(0,profile,plan);
+  expect(first.angle).toBe(plan.startAngle);
+  expect(first.radius).toBe(BALL_POCKET_RADIUS);
+  const positions=WHEEL.map((_,pocketIndex)=>sampleBallMotion(1,profile,{...plan,pocketIndex}));
+  expect(positions.some(f=>f.x<100)).toBe(true);
+  expect(positions.some(f=>f.x>400)).toBe(true);
+  expect(positions.some(f=>f.y>400)).toBe(true);
+ });
+ it('orbits opposite the wheel before falling from the track',()=>{
+  const profile=createBallProfile(()=>.5),track=sampleBallMotion(.2,profile,plan);
   expect(track.radius).toBeGreaterThan(BALL_TRACK_RADIUS-1);
   expect(track.radius).toBeLessThan(BALL_TRACK_RADIUS+1);
-  expect(track.angle).toBeLessThan(0);
-  expect(sampleBallMotion(.95,profile).radius).toBeCloseTo(BALL_POCKET_RADIUS,0);
+  expect(track.angle).toBeLessThan(plan.startAngle);
+  expect(sampleWheelRotation(.2,plan.wheelStart,plan.wheelEnd)).toBeGreaterThan(plan.wheelStart);
  });
- it('keeps all positions finite and inside the wheel across varied profiles',()=>{
+ it('keeps positions finite and inside the wheel across varied profiles',()=>{
   for(const seed of [0,.1,.25,.5,.75,.9,1]){
    const profile=createBallProfile(()=>seed);
    for(let i=0;i<=1000;i++){
-    const frame=sampleBallMotion(i/1000,profile);
+    const frame=sampleBallMotion(i/1000,profile,plan);
     expect(Object.values(frame).every(Number.isFinite)).toBe(true);
     expect(frame.radius).toBeGreaterThan(164);
     expect(frame.radius).toBeLessThanOrEqual(233);
@@ -32,29 +50,45 @@ describe('visual roulette ball motion',()=>{
    }
   }
  });
- it('has visible drop bounces that diminish as the ball settles',()=>{
+ it('bounces visibly and crosses adjacent pockets before settling',()=>{
   const profile=createBallProfile(()=>.5);
-  const maxHeight=(from:number,to:number)=>Math.max(...Array.from({length:101},(_,i)=>sampleBallMotion(from+(to-from)*i/100,profile).height));
+  const maxHeight=(from:number,to:number)=>Math.max(...Array.from({length:101},(_,i)=>sampleBallMotion(from+(to-from)*i/100,profile,plan).height));
   expect(maxHeight(profile.dropStart,profile.captureAt)).toBeGreaterThan(5);
   expect(maxHeight(profile.captureAt,.9)).toBeGreaterThan(1);
-  expect(maxHeight(.95,1)).toBeLessThan(.15);
-  const frames=Array.from({length:100},(_,i)=>sampleBallMotion(profile.captureAt+(1-profile.captureAt)*i/100,profile));
-  expect(frames.some(f=>f.radius>BALL_POCKET_RADIUS+.5)).toBe(true);
-  expect(frames.some(f=>f.radius<BALL_POCKET_RADIUS-.2)).toBe(true);
+  expect(maxHeight(.97,1)).toBeLessThan(.15);
+  const offsets=Array.from({length:101},(_,i)=>relativeAngle(profile.captureAt+(1-profile.captureAt)*i/100));
+  expect(Math.max(...offsets)).toBeGreaterThan(360/WHEEL.length);
+  expect(Math.min(...offsets)).toBeLessThan(-360/WHEEL.length/2);
+  expect(Math.abs(relativeAngle(.995))).toBeLessThan(.01);
  });
- it('varies paths without consuming the result generator',()=>{
+ it('joins the moving wheel without a position or velocity snap',()=>{
+  for(const seed of [0,.5,1]){
+   const profile=createBallProfile(()=>seed),p=profile.captureAt,epsilon=1e-6;
+   const before=sampleBallMotion(p-epsilon,profile,plan),at=sampleBallMotion(p,profile,plan),after=sampleBallMotion(p+epsilon,profile,plan);
+   expect(before.x).toBeCloseTo(at.x,2);
+   expect(after.x).toBeCloseTo(at.x,2);
+   const left=(at.angle-before.angle)/epsilon,right=(after.angle-at.angle)/epsilon;
+   expect(Math.abs(left-right)).toBeLessThan(1);
+  }
+ });
+ it('follows the wheel during the final settling phase instead of staying at a fixed marker',()=>{
+  const profile=createBallProfile(()=>.5),earlier=sampleBallMotion(.97,profile,plan),final=sampleBallMotion(1,profile,plan);
+  expect(angleDifference(final.angle,earlier.angle)).toBeCloseTo(plan.wheelEnd-sampleWheelRotation(.97,plan.wheelStart,plan.wheelEnd),1);
+  expect(angleDifference(final.angle,earlier.angle)).toBeGreaterThan(0);
+  expect(Math.abs(relativeAngle(.99))).toBeLessThan(.02);
+ });
+ it('varies paths without consuming the result generator or changing the winning pocket',()=>{
   const spy=vi.spyOn(crypto,'getRandomValues');
   try{
    const a=createBallProfile(()=>.1),b=createBallProfile(()=>.9);
-   expect(a).not.toEqual(b);
-   expect(sampleBallMotion(.4,a)).not.toEqual(sampleBallMotion(.4,b));
-   expect(sampleBallMotion(1,a).x).toBe(sampleBallMotion(1,b).x);
+   expect(sampleBallMotion(.4,a,plan)).not.toEqual(sampleBallMotion(.4,b,plan));
+   expect(angleDifference(sampleBallMotion(1,a,plan).angle,sampleBallMotion(1,b,plan).angle)).toBeCloseTo(0,7);
    expect(spy).not.toHaveBeenCalled();
   }finally{spy.mockRestore();}
  });
  it('clamps overshoot to exact endpoints',()=>{
   const profile=createBallProfile(()=>.5);
-  expect(sampleBallMotion(-.2,profile)).toEqual(sampleBallMotion(0,profile));
-  expect(sampleBallMotion(1.2,profile)).toEqual(sampleBallMotion(1,profile));
+  expect(sampleBallMotion(-.2,profile,plan)).toEqual(sampleBallMotion(0,profile,plan));
+  expect(sampleBallMotion(1.2,profile,plan)).toEqual(sampleBallMotion(1,profile,plan));
  });
 });
