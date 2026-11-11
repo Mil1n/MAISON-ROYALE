@@ -1,37 +1,44 @@
 import { useEffect, useId, useRef } from 'react';
-import { animate, motion, useMotionValue, useReducedMotion } from 'framer-motion';
-import { createBallProfile, sampleBallMotion, SPIN_DURATION, type BallFrame } from '../ballMotion';
+import { animate, motion, useMotionValue, useReducedMotion, type MotionValue } from 'framer-motion';
+import { createBallProfile, sampleBallMotion, sampleWheelRotation, SPIN_DURATION, type BallFrame, type BallMotionPlan } from '../ballMotion';
 
-type Props={spinning:boolean;rotation:number;onComplete:()=>void};
+type Props={spinning:boolean;rotation:number;wheelRotation:MotionValue<number>;pocketIndex:number;onComplete:()=>void};
 
-export function Ball({spinning,rotation,onComplete}:Props){
+export function Ball({spinning,rotation,wheelRotation,pocketIndex,onComplete}:Props){
  const complete=useRef(onComplete);
  complete.current=onComplete;
  const reduced=useReducedMotion();
+ const angle=useRef(rotation+pocketIndex*360/38);
  const sphereId=`ball-sphere-${useId().replace(/:/g,'')}`;
  const x=useMotionValue(250),groundY=useMotionValue(83),bodyY=useMotionValue(80);
  const scale=useMotionValue(1),roll=useMotionValue(0),shadowScale=useMotionValue(1),shadowOpacity=useMotionValue(.44);
  useEffect(()=>{
   const setFrame=(frame:BallFrame)=>{
+   angle.current=frame.angle;
    x.set(frame.x);groundY.set(frame.y+3);bodyY.set(frame.y-frame.height);
    scale.set(1+frame.height*.012);roll.set(frame.roll);
    shadowScale.set(1+frame.height*.035);shadowOpacity.set(.44/(1+frame.height*.09));
   };
   const profile=createBallProfile();
-  if(!spinning){setFrame(sampleBallMotion(1,profile));return;}
+  const plan:BallMotionPlan={wheelStart:wheelRotation.get(),wheelEnd:rotation,pocketIndex,startAngle:angle.current};
+  const draw=(progress:number)=>{
+   wheelRotation.set(sampleWheelRotation(progress,plan.wheelStart,plan.wheelEnd));
+   setFrame(sampleBallMotion(progress,profile,plan));
+  };
+  if(!spinning){draw(1);return;}
   if(reduced){
-   setFrame(sampleBallMotion(1,profile));
-   const timer=setTimeout(()=>complete.current(),SPIN_DURATION*1000);
+   draw(1);
+   const timer=setTimeout(()=>complete.current(),150);
    return()=>clearTimeout(timer);
   }
-  setFrame(sampleBallMotion(0,profile));
+  draw(0);
   const controls=animate(0,1,{
    duration:SPIN_DURATION,ease:'linear',
-   onUpdate:value=>setFrame(sampleBallMotion(value,profile)),
-   onComplete:()=>{setFrame(sampleBallMotion(1,profile));complete.current();},
+   onUpdate:draw,
+   onComplete:()=>{draw(1);complete.current();},
   });
   return()=>controls.stop();
- },[spinning,rotation,reduced,x,groundY,bodyY,scale,roll,shadowScale,shadowOpacity]);
+ },[spinning,rotation,wheelRotation,pocketIndex,reduced,x,groundY,bodyY,scale,roll,shadowScale,shadowOpacity]);
  return <svg className="ball-overlay" viewBox="0 0 500 500" aria-hidden="true">
   <defs><radialGradient id={sphereId} cx="30%" cy="25%"><stop stopColor="#fffefa"/><stop offset=".5" stopColor="#fff6e0"/><stop offset=".8" stopColor="#ddd0b2"/><stop offset="1" stopColor="#95856a"/></radialGradient></defs>
   <motion.g className="roulette-ball-shadow" style={{x,y:groundY,scaleX:shadowScale,scaleY:shadowScale,opacity:shadowOpacity,transformOrigin:'0px 0px'}}><ellipse cx="2" cy="0" rx="5.5" ry="3.3" fill="#000"/></motion.g>
