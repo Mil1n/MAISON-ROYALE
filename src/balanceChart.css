@@ -1,0 +1,19 @@
+.balance-chart{margin:24px 0;padding:24px;border:1px solid #bca47335;border-radius:12px;background:#08281d66;min-width:0}
+.balance-chart-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.balance-chart-heading h2{display:flex;align-items:center;gap:10px;margin:0;font-size:15px;font-weight:500;color:#ead7ad}
+.balance-chart-heading h2 svg{flex-shrink:0;width:18px;height:18px}
+.balance-chart-heading label{display:flex;align-items:center;gap:10px;font-size:11px;color:#b3bda5}
+.balance-chart select{min-height:44px;background:#102d22;color:#ead7ad;border:1px solid #bca47355;border-radius:5px;padding:8px;font:inherit}
+.balance-chart>svg{display:block;width:100%;height:200px;margin:10px 0}
+.balance-chart-grid{stroke:#bca47322;stroke-width:1;vector-effect:non-scaling-stroke}
+.balance-chart-line{stroke:#dfc58b;stroke-width:2;fill:none;vector-effect:non-scaling-stroke}
+.balance-chart-fill{fill:#dfc58b14}.balance-chart-dot{fill:#f1d49b;stroke:#0d2b21;stroke-width:2;vector-effect:non-scaling-stroke}
+.balance-chart-cursor{stroke:#dfc58b60;stroke-dasharray:4 4;stroke-width:1;vector-effect:non-scaling-stroke}
+.balance-chart-values{display:flex;justify-content:space-between;gap:16px;margin-top:20px;font-size:10px;color:#a6b69f}
+.balance-chart-values span{min-width:0;overflow-wrap:anywhere}.balance-chart-values b{display:block;margin-top:5px;font-size:12px;font-weight:500;color:#d8c9a8}
+.balance-chart-slider{display:flex;align-items:center;gap:14px;color:#b3bda5;font-size:11px}.balance-chart-slider input{padding:0;min-height:44px;accent-color:#d7be88;flex:1;min-width:40px;cursor:pointer}
+.balance-chart-selection{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:12px;min-height:48px;color:#dfc58b;font-size:12px}
+.balance-chart-selection>span{color:#d1dac6}.balance-chart-selection time{display:block;font-size:10px;color:#829b83;margin-top:5px}
+.balance-chart-selection strong{max-width:60%;min-width:0;overflow-wrap:anywhere;text-align:right;font-size:20px}.balance-chart-selection small{font-size:10px;font-weight:400}
+.balance-chart-note,.balance-chart-empty{font-size:11px;color:#a0b299;line-height:1.7;margin:16px 0 0}
+@media(max-width:520px){.balance-chart{padding:18px 14px}.balance-chart>svg{height:165px}.balance-chart-selection strong{font-size:17px}.balance-chart-slider{gap:8px}.balance-chart-heading h2{font-size:14px}}

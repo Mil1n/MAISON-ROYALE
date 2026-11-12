@@ -128,3 +128,118 @@ h1{font-weight:400;letter-spacing:-1.5px;line-height:1.2}
 .game-tabs-note{margin-left:auto;font-size:10px;color:#829b83;text-align:right}
 @media(max-width:850px){.game-tabs-note{display:none}}
 @media(max-width:520px){.game-tabs{margin-bottom:24px;gap:5px}.game-tabs>button{flex:1;justify-content:center;padding:10px 8px;font-size:11px}}
+
+/* Touch targets and narrow layouts: the betting grid scrolls inside the table. */
+body{min-width:320px}
+main,.app-shell{min-width:0}
+.table-scroll{max-width:100%;overscroll-behavior-x:contain;scrollbar-color:#b69b61 #0b2e23;scrollbar-width:thin;padding:4px 4px 10px}
+.table-scroll:focus-visible{outline:2px solid #e5c27b;outline-offset:-2px;border-radius:4px}
+.table-scroll-hint{display:none;font-size:11px;line-height:1.5;color:#d0c299;margin-bottom:6px}
+.playback-settings{display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px;margin:0 0 22px;padding:12px 16px;border:1px solid #bca47335;border-radius:8px;background:#08281d66;color:#c1c7ab;font-size:12px}
+.playback-settings label{display:flex;align-items:center;gap:10px;min-height:44px}
+.playback-settings select{min-height:44px;padding:8px 30px 8px 10px;border:1px solid #bca47360;border-radius:5px;background:#0b2b20;color:#ead7ad;font:inherit;cursor:pointer}
+.playback-settings select:focus-visible{outline:2px solid #e5c27b;outline-offset:3px}
+.playback-settings input[type="checkbox"]{width:20px;height:20px;accent-color:#d2b579;margin:0}
+@media(max-width:960px){
+ .table-scroll-hint{display:block}
+ .betting-table{min-width:616px;--table-columns:44px repeat(12,minmax(44px,1fr)) 44px}
+ .number-grid{grid-template-rows:repeat(3,48px)}
+ .outside-grid{grid-template-rows:44px 48px}
+ .bet-tools{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;padding-top:4px}
+ .bet-tools button{justify-content:center;min-height:44px;padding:5px;font-size:10px;border:1px solid #bca47325;border-radius:5px}
+ .icon-button,.plus-button{min-width:44px;min-height:44px}
+ .rules-button,.section-heading button,.bottom-tools button,.text-button{min-height:44px}
+ .auto-switch{min-height:44px}
+ input,.custom-bet input{font-size:16px}
+ .custom-bet input{min-height:44px}
+ .custom-bet input::placeholder{font-size:12px}
+ .custom-bet{padding-top:0;padding-bottom:0}
+ .all-in-button{min-height:48px}
+ .toast button{min-width:44px;min-height:44px;align-items:center;justify-content:center;margin:-10px -10px -10px 0}
+}
+@media(max-width:520px){
+ main{padding:24px 12px 0}
+ .header{height:auto;min-height:112px;padding:12px 16px;flex-wrap:wrap;gap:10px}
+ .brand{font-size:14px;gap:10px;letter-spacing:1.2px}
+ .brand small{font-size:6px;letter-spacing:1.5px}
+ .brand-symbol{width:34px;height:34px;font-size:29px}
+ .header-right{width:100%;gap:8px}
+ .header-right>.icon-button{width:44px;min-width:44px;height:44px;padding:0}
+ .header-right>.balance{max-width:none;order:-1}
+ .balance>span{font-size:8px;letter-spacing:1px}
+ .balance strong{font-size:20px;margin-top:2px}
+ .plus-button,.withdraw-button{width:44px;height:44px;min-height:44px;display:grid;place-items:center;padding:0}
+ .title-row{gap:10px}
+ .title-row>div{min-width:0}
+ h1{font-size:26px;max-width:none}
+ .title-row p{font-size:12px}
+ .rules-button{width:44px;min-width:44px;justify-content:center}
+ .rules-button svg{width:20px;height:20px}
+ .game-tabs{gap:5px;flex-wrap:wrap}
+ .game-tabs>button{min-width:0;min-height:48px;padding:8px 5px;gap:5px;white-space:normal;font-size:11px;flex:1 1 27%}
+ .game-tabs>button>span{font-size:16px}
+ .playback-settings{gap:8px;padding:8px 12px;font-size:12px}
+ .playback-settings label{flex-wrap:wrap;gap:8px}
+ .playback-settings select{font-size:16px}
+ .play-layout{padding:24px 8px 16px}
+ .casino-table{border-width:5px}
+ .table-topline{margin:0 12px;letter-spacing:.3px}
+ .wheel-frame{max-width:min(250px,calc(100vw - 62px))}
+ .bet-area-header{flex-wrap:wrap;gap:6px;font-size:9px}
+ .subtle{font-size:9px}
+ .bet-tools button{font-size:10px;flex-wrap:wrap;gap:3px}
+ .controls-bar{padding:18px 12px;gap:18px}
+ .chips{gap:12px}
+ .chip{width:44px;height:44px}
+ .chip>span{width:28px;height:28px;font-size:9px}
+ .chip-6>span,.chip-7>span,.chip-8>span{font-size:9px}
+ .amount-controls{gap:8px}
+ .custom-bet{display:flex;flex-direction:column;align-items:stretch;gap:0;padding:6px 8px 0}
+ .custom-bet>span{font-size:10px}
+ .all-in-button{min-width:82px}
+ .amount-hint{font-size:10px}
+ .auto-spin-bar{flex-wrap:wrap;padding:4px 8px;gap:0 8px}
+ .auto-switch,.countdown{font-size:10px}
+ .countdown{flex:1;min-width:90px}
+ .round-stake{max-width:none;min-width:100%;flex-basis:100%}
+ .round-stake .control-label{margin-bottom:6px}
+ .spin-button{min-width:0;width:100%;flex-basis:100%;height:54px;font-size:12px}
+ .session-card{padding:16px 12px}
+ .section-heading{align-items:flex-start;gap:8px}
+ .section-heading>span{font-size:12px;line-height:1.5}
+ .section-heading button{font-size:10px;min-width:75px;padding:4px;align-self:center}
+ .session-stats{gap:6px}
+ .session-stats span{font-size:10px;line-height:1.5}
+ .session-stats strong{font-size:18px}
+ .session-stats>div+div{padding-left:8px}
+ .history-card{padding:18px 14px;gap:12px}
+ .history-card>svg{flex-shrink:0}
+ .history-card>div{min-width:0}
+ .bottom-tools{flex-wrap:wrap;gap:12px;margin-bottom:20px}
+ .bottom-tools>span{max-width:none;font-size:10px}
+ .bottom-tools>div{width:100%;justify-content:flex-end;gap:16px}
+ .bottom-tools button{font-size:11px;padding:0 5px}
+ .modal-backdrop{padding:10px}
+ .modal{padding:28px 18px;max-height:92dvh}
+ .modal-close{right:10px;top:10px}
+ .modal h2{font-size:24px;padding-right:32px}
+ .topup-options{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .gold-button,.danger-button{min-height:44px}
+ .toast{padding:12px;gap:8px}
+ footer{padding:20px 16px}
+}
+
+/* Six games remain visible without a horizontally scrolling navigation bar. */
+.game-tabs{flex-wrap:wrap;row-gap:8px}
+.game-tabs>button{min-height:48px;padding:11px 14px}
+.game-tabs-note{flex:1 1 160px}
+@media(max-width:1100px){.game-tabs-note{display:none}}
+@media(max-width:850px){
+ .game-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;align-items:stretch}
+ .game-tabs>button{min-width:0;justify-content:center;white-space:normal;line-height:1.4}
+}
+@media(max-width:520px){
+ .game-tabs>button{flex-direction:column;gap:2px;padding:7px 4px;min-height:60px;font-size:11px;line-height:1.35}
+ .game-tabs>button>span{font-size:17px;line-height:1.2}
+}
+@media(max-width:960px){.withdraw-button{min-height:44px}}

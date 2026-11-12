@@ -11,6 +11,8 @@ export type BlackjackTableProps = {
   hand: BJHand | null;
   rounds: BJRound[];
   disabled: boolean;
+  /** Duration multiplier: smaller values play faster. */
+  durationScale?: number;
   onDeal: (stake: bigint) => void;
   onHit: () => void;
   onStand: () => void;
@@ -39,7 +41,7 @@ const pipPositions: Record<number, [number, number][]> = {
 };
 
 /** A hidden card has no face value in its DOM, even during the first half of a flip. */
-function PlayingCard({ card }: { card: Card | null }) {
+function PlayingCard({ card, durationScale }: { card: Card | null; durationScale: number }) {
   const reducedMotion = useReducedMotion();
   const [face, setFace] = useState(card);
   const flip = useMotionValue(0);
@@ -48,17 +50,17 @@ function PlayingCard({ card }: { card: Card | null }) {
     if (reducedMotion || card === null) { setFace(card); flip.set(0); return; }
     let stopped = false;
     let opening: ReturnType<typeof animate> | undefined;
-    const closing = animate(flip, 90, { duration: .24, ease: 'easeIn' });
+    const closing = animate(flip, 90, { duration: .24 * durationScale, ease: 'easeIn' });
     closing.then(() => {
       if (stopped) return;
       setFace(card);
       flip.set(-90);
-      opening = animate(flip, 0, { duration: .28, ease: 'easeOut' });
+      opening = animate(flip, 0, { duration: .28 * durationScale, ease: 'easeOut' });
     });
     return () => { stopped = true; closing.stop(); opening?.stop(); };
   // The face update at the midpoint must not cancel the second half of the flip.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [card, reducedMotion, flip]);
+  }, [card, reducedMotion, flip, durationScale]);
   const rank = face === null ? '' : cardRank(face);
   const suit = face === null ? '' : cardSuit(face);
   const red = suit === '♥' || suit === '♦';
@@ -66,7 +68,7 @@ function PlayingCard({ card }: { card: Card | null }) {
   return <motion.div className="bj-card-shell" layout="position"
     initial={reducedMotion ? false : { opacity: 0, x: 56, y: -34, rotate: -9, scale: .94 }}
     animate={{ opacity: 1, x: 0, y: 0, rotate: 0, scale: 1 }}
-    transition={{ duration: reducedMotion ? 0 : .44, ease: [.2, .75, .25, 1], layout: { duration: reducedMotion ? 0 : .35 } }}>
+    transition={{ duration: reducedMotion ? 0 : .44 * durationScale, ease: [.2, .75, .25, 1], layout: { duration: reducedMotion ? 0 : .35 * durationScale } }}>
     <motion.div className={`bj-card ${face === null ? 'bj-card--back' : red ? 'bj-card--red' : 'bj-card--black'}`}
       style={{ rotateY: flip }} role="img" aria-label={face === null ? 'Закрытая карта дилера' : `Карта ${cardLabel(face)}`}>
       {face === null ? <div className="bj-card__back-frame" aria-hidden="true"><Crown /><span>MR</span><i>MAISON ROYALE</i></div> : <>
@@ -79,13 +81,13 @@ function PlayingCard({ card }: { card: Card | null }) {
   </motion.div>;
 }
 
-function Cards({ cards, id }: { cards: (Card | null)[]; id: string }) {
+function Cards({ cards, id, durationScale }: { cards: (Card | null)[]; id: string; durationScale: number }) {
   return <div className="bj-cards">{cards.length ? cards.map((card, index) =>
-    <PlayingCard key={`${id}-${index}`} card={card} />
+    <PlayingCard key={`${id}-${index}`} card={card} durationScale={durationScale} />
   ) : <><div className="bj-card-slot" aria-hidden="true">♠</div><div className="bj-card-slot" aria-hidden="true">♥</div></>}</div>;
 }
 
-function useBlackjackPresentation(hand: BJHand | null, round: BJRound | null, reducedMotion: boolean,
+function useBlackjackPresentation(hand: BJHand | null, round: BJRound | null, reducedMotion: boolean, durationScale: number,
   onPresentationChange?: (busy: boolean) => void, onRoundRevealed?: (round: BJRound) => void) {
   const [view, setView] = useState(() => blackjackView(hand, round));
   const [animating, setAnimating] = useState(false);
@@ -110,7 +112,7 @@ function useBlackjackPresentation(hand: BJHand | null, round: BJRound | null, re
     previousSource.current = sourceKey;
     clearTimeout(fallback.current);
     setBusy(true);
-    const steps = planBlackjackPresentation(currentView.current, hand, round, reducedMotion);
+    const steps = planBlackjackPresentation(currentView.current, hand, round, reducedMotion, durationScale);
     steps.forEach(({ at, view: next }, index) => {
       const update = () => {
         show(next);
@@ -142,13 +144,14 @@ function useBlackjackPresentation(hand: BJHand | null, round: BJRound | null, re
   return { view, animating, act };
 }
 
-export function BlackjackTable({ balance, hand, rounds, disabled, onDeal, onHit, onStand, onDouble, onPresentationChange, onRoundRevealed }: BlackjackTableProps) {
+export function BlackjackTable({ balance, hand, rounds, disabled, onDeal, onHit, onStand, onDouble, onPresentationChange, onRoundRevealed, durationScale: requestedScale = 1 }: BlackjackTableProps) {
   const reducedMotion = useReducedMotion();
+  const durationScale = Number.isFinite(requestedScale) ? Math.max(.25, Math.min(3, requestedScale)) : 1;
   const [amount, setAmount] = useState('100');
   const [error, setError] = useState('');
   const id = useId();
   const last = rounds[0] ?? null;
-  const { view, animating, act } = useBlackjackPresentation(hand, last, Boolean(reducedMotion), onPresentationChange, onRoundRevealed);
+  const { view, animating, act } = useBlackjackPresentation(hand, last, Boolean(reducedMotion), durationScale, onPresentationChange, onRoundRevealed);
   const controlsDisabled = disabled || animating;
   const dealer = view.dealer;
   const player = view.player;
@@ -189,7 +192,7 @@ export function BlackjackTable({ balance, hand, rounds, disabled, onDeal, onHit,
         <div className="bj-felt__watermark" aria-hidden="true">21</div>
         <section className="bj-seat bj-seat--dealer" aria-label="Карты дилера">
           <div className="bj-seat__heading"><h3>Дилер</h3><span className={`bj-score ${!hiddenHole && dealerValue.bust ? 'bj-score--bust' : ''}`} aria-label={`Очки дилера: ${dealer.length ? `${dealerValue.total}${hiddenHole ? ' и закрытая карта' : ''}` : 'нет карт'}`}>{dealer.length ? <>{dealerValue.total}{hiddenHole && <small> + ?</small>}</> : '—'}</span></div>
-          <Cards cards={dealer} id={`dealer-${displayedId}`} />
+          <Cards cards={dealer} id={`dealer-${displayedId}`} durationScale={durationScale} />
           <p className="bj-seat__note">{view.phase === 'dealing' ? 'Раздаём карты по очереди…' : hiddenHole ? 'Вторая карта закрыта до завершения вашего хода' : view.phase === 'dealer' ? 'Ход дилера: добор до 17'  : dealer.length ? dealerValue.bust ? 'У дилера перебор' : dealerValue.natural ? 'Блэкджек у дилера' : dealerValue.soft ? 'Мягкая рука' : 'Карты дилера открыты' : 'Дилер останавливается на любых 17'}</p>
         </section>
 
@@ -197,12 +200,12 @@ export function BlackjackTable({ balance, hand, rounds, disabled, onDeal, onHit,
 
         <section className="bj-seat bj-seat--player" aria-label="Ваши карты">
           <div className="bj-seat__heading"><h3>Ваша рука</h3><span className={`bj-score ${playerValue.bust ? 'bj-score--bust' : ''}`} aria-label={`Ваши очки: ${player.length ? playerValue.total : 'нет карт'}`}>{player.length ? playerValue.total : '—'}</span></div>
-          <Cards cards={player} id={`player-${displayedId}`} />
-          <p className="bj-seat__note">{view.phase === 'dealing' ? 'Карта идёт к вашей руке…' : player.length ? playerValue.bust ? 'Перебор: больше 21 очка' : playerValue.natural ? 'Туз и карта достоинством 10 — блэкджек' : playerValue.soft ? 'Туз считается за 11, пока это выгодно' : hand ? 'Ещё карту или хватит?' : 'Раздача завершена' : 'Выберите ставку и получите первые две карты'}</p>
+          <Cards cards={player} id={`player-${displayedId}`} durationScale={durationScale} />
+          <p className="bj-seat__note">{view.phase === 'dealing' ? 'Карта идёт к вашей руке…' : view.phase === 'dealer' ? 'Дождитесь завершения хода дилера…' : player.length ? playerValue.bust ? 'Перебор: больше 21 очка' : playerValue.natural ? 'Туз и карта достоинством 10 — блэкджек' : playerValue.soft ? 'Туз считается за 11, пока это выгодно' : hand ? 'Ещё карту или хватит?' : 'Раздача завершена' : 'Выберите ставку и получите первые две карты'}</p>
         </section>
 
         <div className="bj-settlement">
-        {visibleLast && <motion.div className={`bj-outcome bj-outcome--${last.outcome}`} initial={reducedMotion ? false : { opacity: 0, y: 12, scale: .98 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: reducedMotion ? 0 : .45, ease: 'easeOut' }} key={last.id} role="status">
+        {visibleLast && <motion.div className={`bj-outcome bj-outcome--${last.outcome}`} initial={reducedMotion ? false : { opacity: 0, y: 12, scale: .98 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: reducedMotion ? 0 : .45 * durationScale, ease: 'easeOut' }} key={last.id} role="status">
           <span className="bj-outcome__label">{outcomeLabel[last.outcome]}</span>
           <strong className={last.net > 0n ? 'bj-positive' : last.net < 0n ? 'bj-negative' : ''}>{last.net > 0n ? '+' : ''}{money(last.net)} <small>фишек</small></strong>
           <span className="bj-outcome__return">Возврат: <b>{money(last.payout)}</b> · {last.doubled ? 'Удвоенная ставка' : 'Ставка'}: <b>{money(last.stake)}</b></span>

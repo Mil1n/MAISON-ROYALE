@@ -3,7 +3,7 @@ import { Ball } from './Ball';
 import { WHEEL, color, type Pocket } from '../game';
 const point = (r:number,a:number) => [250+r*Math.sin(a*Math.PI/180),250-r*Math.cos(a*Math.PI/180)];
 const sector = (outer:number,inner:number,a:number,b:number) => `M${point(outer,a)} A${outer} ${outer} 0 0 1 ${point(outer,b)} L${point(inner,b)} A${inner} ${inner} 0 0 0 ${point(inner,a)} Z`;
-export function Wheel({rotation,spinning,onComplete,result,pocket}:{rotation:number;spinning:boolean;onComplete:()=>void;result:Pocket|null;pocket:Pocket}) {
+export function Wheel({rotation,spinning,onComplete,result,pocket,durationScale=1,soundEnabled=false}:{rotation:number;spinning:boolean;onComplete:()=>void;result:Pocket|null;pocket:Pocket;durationScale?:number;soundEnabled?:boolean}) {
  const step = 360/WHEEL.length;
  const wheelRotation = useMotionValue(rotation);
  return <div className="wheel-wrap"><div className="wheel-shadow"/><div className="wheel-frame">
@@ -43,7 +43,7 @@ export function Wheel({rotation,spinning,onComplete,result,pocket}:{rotation:num
  <circle cx="250" cy="250" r="247" fill="url(#shine)" pointerEvents="none"/>
  <path d="M52 124 A235 235 0 0 1 370 49" fill="none" stroke="#ffe3ab" strokeWidth="2" opacity=".3"/>
  </svg>
- <Ball spinning={spinning} rotation={rotation} wheelRotation={wheelRotation} pocketIndex={WHEEL.indexOf(pocket)} onComplete={onComplete}/></div>
+ <Ball spinning={spinning} rotation={rotation} wheelRotation={wheelRotation} pocketIndex={WHEEL.indexOf(pocket)} onComplete={onComplete} durationScale={durationScale} soundEnabled={soundEnabled}/></div>
  <div className="wheel-caption"><span className="tiny-line"/> АМЕРИКАНСКАЯ РУЛЕТКА <span className="tiny-line"/></div>
  <div className="wheel-result" aria-live="polite">{spinning?'Ставки приняты. Удачи!':result===null?'Сделайте вашу ставку':<>Выпало <strong className={color(result)}>{result}</strong> · {color(result)==='red'?'красное':color(result)==='black'?'чёрное':result==='00'?'двойное зеро':'зеро'}</>}</div></div>;
 }

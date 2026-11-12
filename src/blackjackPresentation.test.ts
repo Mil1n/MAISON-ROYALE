@@ -42,6 +42,20 @@ describe('blackjack presentation', () => {
     expect(reveal.at).toBeGreaterThan(hole.at);
     expect(steps.at(-1)?.view.phase).toBe('complete');
   });
+  it('scales every pause without changing card order or exposing the result early', () => {
+    const previous = blackjackView(hand, null);
+    const normal = planBlackjackPresentation(previous, null, round);
+    for (const scale of [.5, 1.5, 2]) {
+      const steps = planBlackjackPresentation(previous, null, round, false, scale);
+      expect(steps.map(step => step.view)).toEqual(normal.map(step => step.view));
+      steps.forEach((step, index) => expect(step.at).toBeCloseTo(normal[index].at * scale));
+      const reveal = steps.find(({ view }) => view.dealer[1] === round.dealer[1])!;
+      const score = steps.find(({ view }) => view.dealerScoreCount === 2)!;
+      // The score remains hidden until the scaled physical flip has completed.
+      expect(score.at - reveal.at).toBeGreaterThan(.52 * scale * 1000);
+      expect(steps.slice(0, -1).every(({ view }) => view.phase !== 'complete')).toBe(true);
+    }
+  });
   it('restores a hand without exposing the hole and skips delays for reduced motion', () => {
     expect(blackjackView(hand, null).dealer).toEqual([3, null]);
     expect(planBlackjackPresentation(blackjackView(hand, null), null, round, true)).toEqual([{ at: 0, view: blackjackView(null, round) }]);

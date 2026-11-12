@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { WHEEL } from './game';
-import { BALL_POCKET_RADIUS, BALL_TRACK_RADIUS, createBallProfile, sampleBallMotion, sampleWheelRotation, type BallMotionPlan } from './ballMotion';
+import { BALL_POCKET_RADIUS, BALL_TRACK_RADIUS, ballContactProgress, createBallProfile, sampleBallMotion, sampleWheelRotation, type BallMotionPlan } from './ballMotion';
 
 const plan:BallMotionPlan={wheelStart:137,wheelEnd:137+6*360+83,pocketIndex:19,startAngle:72};
 const angleDifference=(a:number,b:number)=>((a-b+180)%360+360)%360-180;
@@ -85,6 +85,18 @@ describe('visual roulette ball motion',()=>{
    expect(angleDifference(sampleBallMotion(1,a,plan).angle,sampleBallMotion(1,b,plan).angle)).toBeCloseTo(0,7);
    expect(spy).not.toHaveBeenCalled();
   }finally{spy.mockRestore();}
+ });
+ it('places contact cues at the visible ground contacts before settlement',()=>{
+  for(const seed of [0,.5,1]){
+   const profile=createBallProfile(()=>seed),contacts=ballContactProgress(profile);
+   expect(contacts.length).toBe(7);
+   expect(contacts).toEqual([...contacts].sort((a,b)=>a-b));
+   for(const p of contacts){
+    expect(p).toBeGreaterThan(profile.dropStart);
+    expect(p).toBeLessThan(1);
+    expect(sampleBallMotion(p,profile,plan).height).toBeCloseTo(0,10);
+   }
+  }
  });
  it('clamps overshoot to exact endpoints',()=>{
   const profile=createBallProfile(()=>.5);

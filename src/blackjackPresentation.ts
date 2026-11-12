@@ -23,15 +23,16 @@ export function blackjackView(hand: BJHand | null, round: BJRound | null): Black
 }
 
 /** Presentation only: settlement and the saved deck remain in the game model. */
-export function planBlackjackPresentation(previous: BlackjackView, hand: BJHand | null, round: BJRound | null, reducedMotion = false): BlackjackPresentationStep[] {
+export function planBlackjackPresentation(previous: BlackjackView, hand: BJHand | null, round: BJRound | null, reducedMotion = false, durationScale = 1): BlackjackPresentationStep[] {
   const target = blackjackView(hand, round);
   if (reducedMotion || target.phase === 'empty') return [{ at: 0, view: target }];
+  const scale = Number.isFinite(durationScale) ? Math.max(.25, Math.min(3, durationScale)) : 1;
   const source = hand ?? round!;
   const steps: BlackjackPresentationStep[] = [];
   let at = 0;
   let view: BlackjackView = { ...previous, player: [...previous.player], dealer: [...previous.dealer] };
   const step = (pause: number, patch: Partial<BlackjackView>) => {
-    at += pause;
+    at += pause * scale;
     view = { ...view, ...patch };
     steps.push({ at, view });
   };

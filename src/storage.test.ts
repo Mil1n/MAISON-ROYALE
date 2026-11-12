@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { type Bet, type Round } from './game';
-import { initial, KEY, load, parseSave, persist, recover, stringifySave } from './storage';
+import { startHoldem, actHoldem, type HoldemHand } from './holdem';
+import { initial, KEY, load, parseSave, persist, recover, recordBalance, stringifySave } from './storage';
 
 const date='2026-11-10T12:00:00.000Z';
 const legacy=()=>({version:1,balance:10000,bets:[],lastBets:[],rounds:[],sound:true,pending:null});
@@ -11,18 +12,18 @@ const legacyWon=(id='legacy-win')=>({id,date,number:0,bets:[{id:'n:0',amount:100
 afterEach(()=>vi.unstubAllGlobals());
 
 describe('exact save serialization',()=>{
- it('starts a version 3 save with a bigint balance under the existing storage key',()=>{
-  expect(initial()).toEqual({version:3,activeGame:'roulette',blackjack:{hand:null,rounds:[]},balance:10000n,bets:[],lastBets:[],rounds:[],sound:true,autoSpin:true,pending:null});
+ it('starts a version 5 save with a bigint balance under the existing storage key',()=>{
+  expect(initial()).toEqual({version:5,animationSpeed:'normal',balanceHistory:[],baccarat:{rounds:[]},videopoker:{hand:null,rounds:[]},dice:{hand:null,rounds:[]},holdem:{hand:null,rounds:[]},activeGame:'roulette',blackjack:{hand:null,rounds:[]},balance:10000n,bets:[],lastBets:[],rounds:[],sound:true,autoSpin:true,pending:null});
   expect(KEY).toBe('maison-royale-v1');
  });
  it('round trips balances, bets, history and signed results far above Number.MAX_SAFE_INTEGER',()=>{
   const huge=12345678901234567890123456789012345678901234567890n;
   const save={...initial(),balance:huge,bets:[{id:'red',amount:huge}],lastBets:[{id:'n:00',amount:huge}],rounds:[won('huge-win',huge),lost('huge-loss',huge)],autoSpin:false};
   const serialized=stringifySave(save,2),json=JSON.parse(serialized);
-  expect(json.version).toBe(3);
+  expect(json.version).toBe(5);
   expect(json.balance).toBe(huge.toString());
   expect(json.rounds[1].net).toBe((-huge).toString());
-  expect(serialized).toContain('\n  "version": 3');
+  expect(serialized).toContain('\n  "version": 5');
   expect(parseSave(serialized)).toEqual(save);
  });
  it('credits an unlimited interrupted double-zero payout exactly once',()=>{
@@ -54,7 +55,7 @@ describe('version 1 migration',()=>{
  it('preserves a one-billion balance, numeric history and legacy pending without a payout cap',()=>{
   const history=legacyWon('history'),pending=legacyWon('pending');
   const parsed=parseSave(JSON.stringify({...legacy(),balance:1000000000,lastBets:pending.bets,rounds:[history],pending}));
-  expect(parsed.version).toBe(3);
+  expect(parsed.version).toBe(5);
   expect(parsed.autoSpin).toBe(true);
   expect(parsed.balance).toBe(1000000000n);
   expect(parsed.rounds[0]).toEqual({...history,bets:[{id:'n:0',amount:1000000000n}],stake:1000000000n,payout:36000000000n,net:35000000000n});
@@ -180,7 +181,7 @@ describe('shared blackjack saves and migration',()=>{
   const huge=10n**80n;
   const old=JSON.parse(stringifySave({...initial(),balance:huge,pending:won('pending',huge)}));old.version=2;delete old.blackjack;delete old.activeGame;
   const restored=recover(parseSave(JSON.stringify(old)));
-  expect(restored.version).toBe(3);
+  expect(restored.version).toBe(5);
   expect(restored.activeGame).toBe('roulette');
   expect(restored.blackjack).toEqual({hand:null,rounds:[]});
   expect(restored.balance).toBe(huge*37n);
@@ -230,10 +231,10 @@ describe('shared blackjack saves and migration',()=>{
 });
 
 describe('blackjack save validation',()=>{
- it.each([null,{},'roulette',[],{hand:null},{rounds:[]}])('requires complete blackjack state in version 3: %j',blackjack=>{
+ it.each([null,{},'roulette',[],{hand:null},{rounds:[]}])('requires complete blackjack state in current saves: %j',blackjack=>{
   expect(()=>parseSave(JSON.stringify({...wire(),blackjack}))).toThrow();
  });
- it('requires a known active game in version 3',()=>{
+ it('requires a known active game in current saves',()=>{
   for(const activeGame of [undefined,null,'poker',1])expect(()=>parseSave(JSON.stringify({...wire(),activeGame}))).toThrow();
  });
  it('requires a complete nonduplicated 52-card partition for active hands',()=>{
@@ -324,5 +325,247 @@ describe('completed blackjack dealer state',()=>{
    {...blackjackNatural(),dealer:[8,5,3]},
    {id:'bust',date,stake:100n,player:[9,10,11],dealer:[8,5,3],outcome:'loss' as const,payout:0n,net:-100n,doubled:false},
   ])expect(()=>parseSave(stringifySave({...initial(),blackjack:{hand:null,rounds:[entry]}}))).toThrow();
+ });
+});
+
+describe('version 4 settings and wallet history',()=>{
+ it('migrates v3 with all blackjack data intact and starts tracking only future balances',()=>{
+  const save={...initial(),balance:10n**80n,activeGame:'blackjack' as const,blackjack:{hand:activeBlackjack(),rounds:[blackjackNatural()]}};
+  const old=JSON.parse(stringifySave(save));old.version=3;
+  delete old.animationSpeed;delete old.balanceHistory;delete old.baccarat;
+  expect(parseSave(JSON.stringify(old))).toEqual(save);
+ });
+ it.each(['slow','normal','fast'] as const)('persists the %s animation setting',animationSpeed=>{
+  const save={...initial(),animationSpeed};
+  expect(parseSave(stringifySave(save))).toEqual(save);
+ });
+ it.each([undefined,null,'instant',0,true])('rejects unknown animation settings: %s',animationSpeed=>{
+  expect(()=>parseSave(JSON.stringify({...wire(),animationSpeed}))).toThrow();
+ });
+ it('records initial and final equity, including reserved chips but not speculative winnings',()=>{
+  const previous={...initial(),activeGame:'blackjack' as const,balance:8900n,bets:[{id:'red',amount:100n}],blackjack:{hand:activeBlackjack(1000n),rounds:[]}};
+  const next={...previous,balance:9900n};
+  const tracked=recordBalance(previous,next,'topup','deposit');
+  expect(tracked.balanceHistory.map(point=>point.balance)).toEqual([10000n,11000n]);
+  expect(tracked.balanceHistory.map(point=>point.kind)).toEqual(['start','topup']);
+  expect(parseSave(stringifySave(tracked))).toEqual(tracked);
+ });
+ it('records recovered roulette payout once and retains the pre-bet baseline',()=>{
+  const save={...initial(),balance:9900n,pending:won('recovered')};
+  const recovered=recover(save);
+  expect(recovered.balanceHistory.map(point=>point.balance)).toEqual([10000n,13500n]);
+  expect(recovered.balanceHistory[1]).toMatchObject({id:'recovered',kind:'roulette'});
+  expect(recover(recovered)).toBe(recovered);
+  expect(recordBalance(recovered,recovered,'roulette','recovered').balanceHistory).toEqual(recovered.balanceHistory);
+ });
+ it('retains the newest 1000 events and accepts a clock moving backward without reordering them',()=>{
+  const history=Array.from({length:1000},(_,i)=>({id:`p-${i}`,date:'2099-01-01T00:00:00.000Z',balance:BigInt(i),kind:'topup' as const}));
+  const previous={...initial(),balanceHistory:history};
+  const tracked=recordBalance(previous,{...previous,balance:7n},'reset','reset');
+  expect(tracked.balanceHistory).toHaveLength(1000);
+  expect(tracked.balanceHistory[0].id).toBe('p-1');
+  expect(tracked.balanceHistory.at(-1)).toMatchObject({id:'reset',balance:7n,kind:'reset'});
+  expect(parseSave(stringifySave(tracked))).toEqual(tracked);
+ });
+ it('rejects malformed, oversized, duplicated or nonexact wallet history',()=>{
+  const point={id:'start',date,balance:'10000',kind:'start'};
+  for(const balanceHistory of [undefined,null,{},[null],[{...point,balance:10000}],[{...point,balance:'01'}],[{...point,balance:'-1'}],[{...point,date:'bad'}],[{...point,id:''}],[{...point,kind:'mystery'}],[point,point],Array(1001).fill(point)]){
+   expect(()=>parseSave(JSON.stringify({...wire(),balanceHistory}))).toThrow();
+  }
+ });
+});
+
+const baccaratResult=()=>({id:'baccarat-win',date,stake:20n,bet:'banker' as const,player:[6,9],banker:[7,9],winner:'banker' as const,payout:39n,net:19n});
+describe('baccarat persistence',()=>{
+ it('round trips exact commission payouts and selected table without recrediting the wallet',()=>{
+  const huge=20n*10n**100n;
+  const round={...baccaratResult(),stake:huge,payout:huge*39n/20n,net:huge*19n/20n};
+  const save={...initial(),activeGame:'baccarat' as const,balance:huge,baccarat:{rounds:[round]}};
+  const parsed=parseSave(stringifySave(save));
+  expect(parsed).toEqual(save);
+  expect(recover(parsed)).toBe(parsed);
+ });
+ it('validates rules, payouts, bets and identities instead of trusting an imported result',()=>{
+  const source=JSON.parse(stringifySave({...initial(),baccarat:{rounds:[baccaratResult()]}}));
+  for(const change of [{payout:'40'},{net:'20'},{winner:'player'},{bet:'house'},{stake:'21'},{stake:20},{player:[0,1,2]},{banker:[52,9]},{player:null},{date:'bad'},{id:''}]){
+   const copy=structuredClone(source);Object.assign(copy.baccarat.rounds[0],change);
+   expect(()=>parseSave(JSON.stringify(copy))).toThrow();
+  }
+ });
+ it('requires complete baccarat state with bounded, unique rounds',()=>{
+  const result=baccaratResult();
+  for(const baccarat of [null,{},[],{rounds:null},{rounds:[result,result]},{rounds:Array.from({length:10001},(_,i)=>({...result,id:`b-${i}`}))}]){
+   expect(()=>parseSave(stringifySave({...initial(),baccarat} as never))).toThrow();
+  }
+ });
+ it('does not allow baccarat as an active game in an older schema',()=>{
+  const old={...wire(),version:3,activeGame:'baccarat'};
+  expect(()=>parseSave(JSON.stringify(old))).toThrow();
+ });
+});
+
+describe('version 5 games migration',()=>{
+ it('migrates v4 with every old table, setting and tracked balance preserved',()=>{
+  const tracked=recordBalance(initial(),{...initial(),balance:12000n,animationSpeed:'fast'},'topup','old-topup');
+  const save={...tracked,activeGame:'baccarat' as const,baccarat:{rounds:[baccaratResult()]},rounds:[lost()],blackjack:{hand:null,rounds:[blackjackNatural()]}};
+  const old=JSON.parse(stringifySave(save));old.version=4;
+  delete old.videopoker;delete old.dice;delete old.holdem;
+  expect(parseSave(JSON.stringify(old))).toEqual(save);
+ });
+ it.each(['videopoker','dice','holdem'])('rejects the new %s table in v4',activeGame=>{
+  expect(()=>parseSave(JSON.stringify({...wire(),version:4,activeGame}))).toThrow();
+ });
+ it.each(['videopoker','dice','holdem'] as const)('requires complete current %s state',game=>{
+  for(const state of [undefined,null,{},[],{hand:null},{rounds:[]},{hand:null,rounds:null}]){
+   expect(()=>parseSave(JSON.stringify({...wire(),[game]:state}))).toThrow();
+  }
+ });
+});
+
+function pokerHand(stake=100n) {
+ return {id:'poker-active',date,stake,cards:[0,9,10,11,12],deck:Array.from({length:52},(_,i)=>i).filter(i=>![0,9,10,11,12].includes(i))};
+}
+function pokerResult(stake=100n) {
+ const hand=pokerHand(stake);
+ return {id:'poker-won',date,stake,initialCards:hand.cards,cards:hand.cards,held:[0,1,2,3,4],category:'royal' as const,payout:250n*stake,net:249n*stake};
+}
+const diceHand=(stake=100n)=>({id:'dice-active',date,stake,point:6,rolls:[[3,3],[1,2]] as [number,number][]});
+const diceResult=(stake=100n)=>({id:'dice-won',date,stake,point:6,rolls:[[3,3],[1,2],[2,4]] as [number,number][],outcome:'win' as const,payout:stake*2n,net:stake});
+
+describe('videopoker save state',()=>{
+ it('restores exact private draw order and reserved stake on its table, without recredit',()=>{
+  const save={...initial(),balance:10n**90n,videopoker:{hand:pokerHand(10n**80n),rounds:[pokerResult()]}};
+  const parsed=parseSave(stringifySave(save));
+  expect(parsed).toEqual({...save,activeGame:'videopoker'});
+  expect(parsed.videopoker.hand?.deck).toEqual(save.videopoker.hand.deck);
+  expect(recover(parsed)).toBe(parsed);
+ });
+ it('validates complete deck partition and positive exact stake',()=>{
+  const source=JSON.parse(stringifySave({...initial(),videopoker:{hand:pokerHand(),rounds:[]}}));
+  for(const change of [{cards:[0,0,10,11,12]},{cards:[0,1,2,3]},{deck:Array(47).fill(1)},{stake:'0'},{stake:100},{stake:'01'},{date:'bad'},{id:''}]){
+   const copy=structuredClone(source);Object.assign(copy.videopoker.hand,change);
+   expect(()=>parseSave(JSON.stringify(copy))).toThrow();
+  }
+ });
+ it('rejects forged held positions, replacements and winnings',()=>{
+  const source=JSON.parse(stringifySave({...initial(),videopoker:{hand:null,rounds:[pokerResult()]}}));
+  for(const change of [{held:[0,0]},{held:[0,1,2,3]},{cards:[0,9,10,11,25]},{category:'flush'},{payout:'24900'},{net:'24901'}]){
+   const copy=structuredClone(source);Object.assign(copy.videopoker.rounds[0],change);
+   expect(()=>parseSave(JSON.stringify(copy))).toThrow();
+  }
+ });
+ it('preserves settled returns without paying them a second time',()=>{
+  const save={...initial(),activeGame:'videopoker' as const,balance:25000n,videopoker:{hand:null,rounds:[pokerResult()]}};
+  expect(recover(parseSave(stringifySave(save)))).toEqual(save);
+ });
+});
+
+describe('dice save replay',()=>{
+ it('preserves a point and all previous throws through repeat loads without settling it',()=>{
+  const save={...initial(),activeGame:'dice' as const,balance:9900n,dice:{hand:diceHand(),rounds:[]}};
+  const parsed=recover(parseSave(stringifySave(save)));
+  expect(parsed).toEqual(save);
+  expect(recover(parseSave(stringifySave(parsed)))).toEqual(save);
+ });
+ it('restores an unfinished game to its table and validates every previous throw',()=>{
+  const save={...initial(),dice:{hand:diceHand(),rounds:[]}};
+  expect(parseSave(stringifySave(save)).activeGame).toBe('dice');
+  const source=JSON.parse(stringifySave(save));
+  for(const change of [{point:8},{rolls:[[0,6]]},{rolls:[[7,1]]},{rolls:[[1.5,4.5]]},{rolls:[[3,4],[3,3]]},{rolls:[[3,3],[3,4]]},{stake:'0'},{stake:100}]){
+   const copy=structuredClone(source);Object.assign(copy.dice.hand,change);
+   expect(()=>parseSave(JSON.stringify(copy))).toThrow();
+  }
+ });
+ it('checks terminal throw, payout and net and does not replay a paid return',()=>{
+  const save={...initial(),activeGame:'dice' as const,balance:10100n,dice:{hand:null,rounds:[diceResult()]}};
+  expect(recover(parseSave(stringifySave(save)))).toEqual(save);
+  const source=JSON.parse(stringifySave(save));
+  for(const change of [{outcome:'loss'},{payout:'201'},{net:'101'},{rolls:[[3,3],[1,2]]},{rolls:[[3,3],[3,4],[2,4]]}]){
+   const copy=structuredClone(source);Object.assign(copy.dice.rounds[0],change);
+   expect(()=>parseSave(JSON.stringify(copy))).toThrow();
+  }
+ });
+});
+
+describe('multiple table save invariants',()=>{
+ it('rejects every pair of simultaneous unfinished hands and accepted roulette spins',()=>{
+  const unfinished=[{pending:won()},{blackjack:{hand:activeBlackjack(),rounds:[]}},{videopoker:{hand:pokerHand(),rounds:[]}},{dice:{hand:diceHand(),rounds:[]}},{holdem:{hand:holdemHand(),rounds:[]}}];
+  for(let i=0;i<unfinished.length;i++)for(let j=i+1;j<unfinished.length;j++){
+   expect(()=>parseSave(stringifySave({...initial(),...unfinished[i],...unfinished[j]}))).toThrow();
+  }
+ });
+ it('forbids duplicate history ids, active ids in paid history, and more than 10000 game rounds',()=>{
+  const histories=[['videopoker',pokerHand(),pokerResult()],['dice',diceHand(),diceResult()]] as const;
+  for(const [game,hand,result] of histories){
+   for(const state of [{hand:null,rounds:[result,result]},{hand,rounds:[{...result,id:hand.id}]},{hand:null,rounds:Array.from({length:10001},(_,i)=>({...result,id:`r-${i}`}))}]){
+    expect(()=>parseSave(stringifySave({...initial(),[game]:state}))).toThrow();
+   }
+  }
+ });
+ it.each(['videopoker','dice','holdem'] as const)('includes the reserved %s stake in initial tracked equity',game=>{
+  // This helper only records wallet changes; model validity is checked on import.
+  const previous={...initial(),balance:9900n,[game]:{hand:{stake:100n},rounds:[]}} as never;
+  const next={...initial(),balance:10100n};
+  const tracked=recordBalance(previous,next,game,'settlement');
+  expect(tracked.balanceHistory.map(point=>point.balance)).toEqual([10000n,10100n]);
+  expect(tracked.balanceHistory[1].kind).toBe(game);
+ });
+});
+
+function holdemHand(stake=1000n):HoldemHand {
+ const turn=startHoldem(stake,0,Array.from({length:52},(_,i)=>i));
+ if(!turn.hand)throw new Error('Expected active hand');
+ return turn.hand;
+}
+function holdemResult(stake=1000n) {
+ const start=holdemHand(stake);
+ const first=actHoldem(start,{type:'raise',amount:stake});
+ if(!first.hand)throw new Error('Expected opponent turn');
+ const second=actHoldem(first.hand,{type:'fold'});
+ if(!second.hand)throw new Error('Expected second opponent turn');
+ const third=actHoldem(second.hand,{type:'fold'});
+ if(!third.round)throw new Error('Expected settled hand');
+ return third.round;
+}
+describe('holdem persistence replay',()=>{
+ it('restores complete private deck and stacks with the reserved buyin unchanged',()=>{
+  const hand=holdemHand(10n**50n);
+  const save={...initial(),balance:7n,holdem:{hand,rounds:[]}};
+  const restored=recover(parseSave(stringifySave(save)));
+  expect(restored).toEqual({...save,activeGame:'holdem'});
+  expect(recover(parseSave(stringifySave(restored)))).toEqual(restored);
+ });
+ it('replays paid actions and awards without paying a settled return twice',()=>{
+  const round=holdemResult();
+  const save={...initial(),balance:round.payout,activeGame:'holdem' as const,holdem:{hand:null,rounds:[round]}};
+  expect(recover(parseSave(stringifySave(save)))).toEqual(save);
+ });
+ it('rejects forged deck, stacks, wager, action rights and numeric money',()=>{
+  const source=JSON.parse(stringifySave({...initial(),holdem:{hand:holdemHand(),rounds:[]}}));
+  const mutators=[
+   (hand:Record<string,unknown>)=>{hand.stake=1000;},
+   (hand:Record<string,unknown>)=>{hand.bet='21';},
+   (hand:Record<string,unknown>)=>{hand.cursor=7;},
+   (hand:Record<string,unknown>)=>{hand.pending=[0];},
+   (hand:Record<string,unknown>)=>{hand.actedAt=['20',null,null];},
+   (hand:Record<string,unknown>)=>{hand.deck=Array(52).fill(1);},
+   (hand:Record<string,unknown>)=>{(hand.seats as {stack:string}[])[0].stack='1001';},
+   (hand:Record<string,unknown>)=>{(hand.seats as {hole:number[]}[])[1].hole=[0,0];},
+  ];
+  for(const mutate of mutators){const copy=structuredClone(source);mutate(copy.holdem.hand);expect(()=>parseSave(JSON.stringify(copy))).toThrow();}
+ });
+ it('rejects forged result, pot, awards and action history',()=>{
+  const source=JSON.parse(stringifySave({...initial(),holdem:{hand:null,rounds:[holdemResult()]}}));
+  for(const change of [{payout:'1031'},{net:'31'},{pot:'10000'},{winners:[1]},{awards:['1000','0','0']},{actions:[]}]){
+   const copy=structuredClone(source);Object.assign(copy.holdem.rounds[0],change);
+   expect(()=>parseSave(JSON.stringify(copy))).toThrow();
+  }
+ });
+ it('rejects duplicate ids and an already-settled active hand',()=>{
+  const round=holdemResult();
+  const hand={...holdemHand(),id:round.id,date:round.date};
+  for(const state of [{hand:null,rounds:[round,round]},{hand,rounds:[round]},{hand:null,rounds:Array.from({length:10001},(_,i)=>({...round,id:`h-${i}`}))}]){
+   expect(()=>parseSave(stringifySave({...initial(),holdem:state}))).toThrow();
+  }
  });
 });

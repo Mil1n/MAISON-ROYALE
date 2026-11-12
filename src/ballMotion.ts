@@ -86,3 +86,10 @@ export function sampleBallMotion(progress:number,profile:BallProfile,plan:BallMo
  const radians=angle*Math.PI/180;
  return {x:250+radius*Math.sin(radians),y:250-radius*Math.cos(radians),radius,angle,height,roll:angle*2.4+p*180};
 }
+
+/** Ground contacts of the visible drop hops; always before the final result. */
+export function ballContactProgress(profile:BallProfile):number[] {
+ const descent=Array.from({length:4},(_,i)=>profile.dropStart+(profile.captureAt-profile.dropStart)*(i+1)/4);
+ const settling=Array.from({length:3},(_,i)=>profile.captureAt+(1-profile.captureAt)*(i+1)/5);
+ return [...descent,...settling];
+}

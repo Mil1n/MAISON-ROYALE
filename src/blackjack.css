@@ -927,3 +927,15 @@
 @media (prefers-reduced-motion: reduce) {
   .blackjack button { transition: none; }
 }
+
+/* Keep every interactive target usable with a thumb, including narrow phones. */
+@media (max-width: 960px) {
+  .blackjack .bj-chip { flex-basis: 44px; width: 44px; height: 44px; }
+  .blackjack .bj-custom-stake > button { min-height: 44px; }
+  .blackjack .bj-custom-stake input { min-height: 44px; font-size: 17px; }
+  .blackjack .bj-custom-stake { padding-top: 4px; padding-bottom: 4px; }
+}
+.blackjack button:focus-visible {
+  outline: 2px solid #f0d5a0;
+  outline-offset: 4px;
+}
